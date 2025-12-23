@@ -28,6 +28,7 @@ pub fn api_v1_router() -> Router<AppState> {
                 .patch(notes::update_note)
                 .delete(notes::delete_note),
         )
+        .route("/notes/{id}/versions", get(notes::list_note_versions))
         // Search route
         .route("/search", get(notes::search_notes))
         // Import/Export routes

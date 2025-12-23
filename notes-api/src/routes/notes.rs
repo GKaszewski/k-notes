@@ -177,3 +177,28 @@ pub async fn search_notes(
 
     Ok(Json(response))
 }
+
+/// List versions of a note
+/// GET /api/v1/notes/:id/versions
+pub async fn list_note_versions(
+    State(state): State<AppState>,
+    auth: AuthSession<AuthBackend>,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Vec<crate::dto::NoteVersionResponse>>> {
+    let user = auth
+        .user
+        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
+            "Login required".to_string(),
+        )))?;
+    let user_id = user.id();
+
+    let service = NoteService::new(state.note_repo, state.tag_repo);
+
+    let versions = service.list_note_versions(id, user_id).await?;
+    let response: Vec<crate::dto::NoteVersionResponse> = versions
+        .into_iter()
+        .map(crate::dto::NoteVersionResponse::from)
+        .collect();
+
+    Ok(Json(response))
+}

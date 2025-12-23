@@ -2,7 +2,7 @@ import { type Note, useDeleteNote, useUpdateNote } from "@/hooks/use-notes";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pin, Archive, Trash2, Edit } from "lucide-react";
+import { Pin, Archive, Trash2, Edit, History } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -11,6 +11,7 @@ import { NoteForm } from "./note-form";
 import ReactMarkdown from "react-markdown";
 import { getNoteColor } from "@/lib/constants";
 import clsx from "clsx";
+import { VersionHistoryDialog } from "./version-history-dialog";
 
 interface NoteCardProps {
   note: Note;
@@ -20,6 +21,7 @@ export function NoteCard({ note }: NoteCardProps) {
   const { mutate: deleteNote } = useDeleteNote();
   const { mutate: updateNote } = useUpdateNote();
   const [editing, setEditing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Archive toggle
   const toggleArchive = () => {
@@ -92,6 +94,9 @@ export function NoteCard({ note }: NoteCardProps) {
             ))}
           </div>
           <div className="flex justify-end w-full gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={() => setHistoryOpen(true)} title="History">
+                <History className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={() => setEditing(true)}>
                 <Edit className="h-4 w-4" />
             </Button>
@@ -126,6 +131,13 @@ export function NoteCard({ note }: NoteCardProps) {
              />
         </DialogContent>
       </Dialog>
+      
+      <VersionHistoryDialog 
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        noteId={note.id}
+        noteTitle={note.title}
+      />
     </>
   );
 }

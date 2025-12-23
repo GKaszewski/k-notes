@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::entities::{MAX_TAGS_PER_NOTE, Note, NoteFilter, Tag, User};
+use crate::entities::{MAX_TAGS_PER_NOTE, Note, NoteFilter, NoteVersion, Tag, User};
 use crate::errors::{DomainError, DomainResult};
 use crate::repositories::{NoteRepository, TagRepository, UserRepository};
 
@@ -100,6 +100,10 @@ impl NoteService {
             ));
         }
 
+        // Create version snapshot (save current state)
+        let version = NoteVersion::new(note.id, note.title.clone(), note.content.clone());
+        self.note_repo.save_version(&version).await?;
+
         // Apply updates
         if let Some(title) = req.title {
             if title.trim().is_empty() {
@@ -163,6 +167,18 @@ impl NoteService {
         }
 
         Ok(note)
+    }
+
+    /// List versions of a note
+    pub async fn list_note_versions(
+        &self,
+        note_id: Uuid,
+        user_id: Uuid,
+    ) -> DomainResult<Vec<crate::entities::NoteVersion>> {
+        // Verify access (re-using get_note for authorization check)
+        self.get_note(note_id, user_id).await?;
+
+        self.note_repo.find_versions_by_note_id(note_id).await
     }
 
     /// List notes for a user with optional filters
@@ -617,6 +633,47 @@ mod tests {
 
             let results = service.search_notes(user_id, "   ").await.unwrap();
             assert!(results.is_empty());
+        }
+        #[tokio::test]
+        async fn test_update_note_creates_version() {
+            let (service, user_id) = create_note_service();
+
+            // Create original note
+            let create_req = CreateNoteRequest {
+                user_id,
+                title: "Original Title".to_string(),
+                content: "Original Content".to_string(),
+                tags: vec![],
+                color: None,
+                is_pinned: false,
+            };
+            let note = service.create_note(create_req).await.unwrap();
+
+            // Update the note
+            let update_req = UpdateNoteRequest {
+                id: note.id,
+                user_id,
+                title: Some("New Title".to_string()),
+                content: Some("New Content".to_string()),
+                is_pinned: None,
+                is_archived: None,
+                color: None,
+                tags: None,
+            };
+            service.update_note(update_req).await.unwrap();
+
+            // Check if version was saved
+            let versions = service
+                .note_repo
+                .find_versions_by_note_id(note.id)
+                .await
+                .unwrap();
+
+            assert_eq!(versions.len(), 1);
+            let version = &versions[0];
+            assert_eq!(version.title, "Original Title");
+            assert_eq!(version.content, "Original Content");
+            assert_eq!(version.note_id, note.id);
         }
     }
 

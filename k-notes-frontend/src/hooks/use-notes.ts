@@ -90,6 +90,22 @@ export function useDeleteNote() {
     });
 }
 
+export interface NoteVersion {
+    id: string;
+    note_id: string;
+    title: string;
+    content: string;
+    created_at: string;
+}
+
+export function useNoteVersions(noteId: string, enabled: boolean = false) {
+    return useQuery({
+        queryKey: ["notes", noteId, "versions"],
+        queryFn: () => api.get(`/notes/${noteId}/versions`),
+        enabled: enabled && !!noteId,
+    });
+}
+
 export function useTags() {
     return useQuery({
         queryKey: ["tags"],

@@ -27,6 +27,15 @@ pub trait NoteRepository: Send + Sync {
 
     /// Full-text search across note titles and content
     async fn search(&self, user_id: Uuid, query: &str) -> DomainResult<Vec<Note>>;
+
+    /// Save a note version
+    async fn save_version(&self, version: &crate::entities::NoteVersion) -> DomainResult<()>;
+
+    /// Find all versions for a note
+    async fn find_versions_by_note_id(
+        &self,
+        note_id: Uuid,
+    ) -> DomainResult<Vec<crate::entities::NoteVersion>>;
 }
 
 /// Repository port for User persistence
@@ -85,12 +94,14 @@ pub(crate) mod tests {
     /// In-memory mock implementation for testing
     pub struct MockNoteRepository {
         notes: Mutex<HashMap<Uuid, Note>>,
+        versions: Mutex<HashMap<Uuid, Vec<crate::entities::NoteVersion>>>,
     }
 
     impl MockNoteRepository {
         pub fn new() -> Self {
             Self {
                 notes: Mutex::new(HashMap::new()),
+                versions: Mutex::new(HashMap::new()),
             }
         }
     }
@@ -138,6 +149,21 @@ pub(crate) mod tests {
                 })
                 .cloned()
                 .collect())
+        }
+
+        async fn save_version(&self, version: &crate::entities::NoteVersion) -> DomainResult<()> {
+            let mut versions = self.versions.lock().unwrap();
+            let note_versions = versions.entry(version.note_id).or_insert_with(Vec::new);
+            note_versions.push(version.clone());
+            Ok(())
+        }
+
+        async fn find_versions_by_note_id(
+            &self,
+            note_id: Uuid,
+        ) -> DomainResult<Vec<crate::entities::NoteVersion>> {
+            let versions = self.versions.lock().unwrap();
+            Ok(versions.get(&note_id).cloned().unwrap_or_default())
         }
     }
 

@@ -14,7 +14,7 @@ pub mod repositories;
 pub mod services;
 
 // Re-export commonly used types at crate root
-pub use entities::{MAX_TAGS_PER_NOTE, Note, NoteFilter, Tag, User};
+pub use entities::{MAX_TAGS_PER_NOTE, Note, NoteFilter, NoteVersion, Tag, User};
 pub use errors::{DomainError, DomainResult};
 pub use repositories::{NoteRepository, TagRepository, UserRepository};
 pub use services::{CreateNoteRequest, NoteService, TagService, UpdateNoteRequest, UserService};

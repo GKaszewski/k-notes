@@ -182,6 +182,28 @@ impl Note {
     }
 }
 
+/// A snapshot of a note's state at a specific point in time.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoteVersion {
+    pub id: Uuid,
+    pub note_id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub created_at: DateTime<Utc>,
+}
+
+impl NoteVersion {
+    pub fn new(note_id: Uuid, title: String, content: String) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            note_id,
+            title,
+            content,
+            created_at: Utc::now(),
+        }
+    }
+}
+
 /// Filter options for querying notes
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct NoteFilter {

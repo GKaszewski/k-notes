@@ -146,3 +146,25 @@ pub struct UserResponse {
     pub email: String,
     pub created_at: DateTime<Utc>,
 }
+
+/// Note Version response DTO
+#[derive(Debug, Serialize)]
+pub struct NoteVersionResponse {
+    pub id: Uuid,
+    pub note_id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<notes_domain::NoteVersion> for NoteVersionResponse {
+    fn from(version: notes_domain::NoteVersion) -> Self {
+        Self {
+            id: version.id,
+            note_id: version.note_id,
+            title: version.title,
+            content: version.content,
+            created_at: version.created_at,
+        }
+    }
+}
