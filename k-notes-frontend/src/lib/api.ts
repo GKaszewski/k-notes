@@ -73,4 +73,12 @@ export const api = {
             body: JSON.stringify(body),
         }),
     delete: (endpoint: string) => fetchWithAuth(endpoint, { method: "DELETE" }),
+    exportData: async () => {
+        const response = await fetch(`${getApiUrl()}/export`, {
+            credentials: "include",
+        });
+        if (!response.ok) throw new ApiError(response.status, "Failed to export data");
+        return response.blob();
+    },
+    importData: (data: any) => api.post("/import", data),
 };

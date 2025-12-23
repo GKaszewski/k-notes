@@ -27,7 +27,7 @@ interface NoteFormProps {
 
 export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Save" }: NoteFormProps) {
   const form = useForm<NoteFormValues>({
-    resolver: zodResolver(noteSchema),
+    resolver: zodResolver(noteSchema) as any,
     defaultValues: {
       title: "",
       content: "",
@@ -40,9 +40,9 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-4">
         <FormField
-          control={form.control}
+          control={form.control as any}
           name="title"
           render={({ field }) => (
             <FormItem>
@@ -55,7 +55,7 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
           )}
         />
         <FormField
-          control={form.control}
+          control={form.control as any}
           name="content"
           render={({ field }) => (
             <FormItem>
@@ -68,7 +68,7 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
           )}
         />
         <FormField
-          control={form.control}
+          control={form.control as any}
           name="tags"
           render={({ field }) => (
             <FormItem>
@@ -82,7 +82,7 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
         />
         
         <FormField
-          control={form.control}
+          control={form.control as any}
           name="color"
           render={({ field }) => (
             <FormItem>
@@ -111,7 +111,7 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
         />
 
         <FormField
-          control={form.control}
+          control={form.control as any}
           name="is_pinned"
           render={({ field }) => (
             <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
