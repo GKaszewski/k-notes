@@ -17,6 +17,7 @@ export default function Layout() {
           <header className="border-b bg-background/95 backdrop-blur h-14 flex items-center justify-between px-4 sticky top-0 z-10">
                <div className="flex items-center gap-2">
                    <SidebarTrigger />
+                   <img src="/logo.png" alt="K-Notes Logo" className="h-8 w-8 object-contain" />
                    <div className="font-semibold">K-Notes</div>
                </div>
                
