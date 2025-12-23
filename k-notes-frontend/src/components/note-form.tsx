@@ -4,9 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Editor } from "@/components/editor/editor";
 
 const noteSchema = z.object({
   title: z.string().min(1, "Title is required").max(200, "Title too long"),
@@ -61,7 +62,11 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
             <FormItem>
               <FormLabel>Content</FormLabel>
               <FormControl>
-                <Textarea placeholder="Note content..." className="min-h-[100px] font-mono" {...field} />
+                <Editor
+                  placeholder="Note content... Type / for commands"
+                  value={field.value}
+                  onChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -80,7 +85,7 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
             </FormItem>
           )}
         />
-        
+
         <FormField
           control={form.control as any}
           name="color"
@@ -93,13 +98,11 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
                     <div
                       key={color.name}
                       onClick={() => field.onChange(color.name)}
-                      className={`w-8 h-8 rounded-full cursor-pointer border-2 transition-all ${
-                        color.value.split(" ")[0] // Take background class
-                      } ${
-                        field.value === color.name
+                      className={`w-8 h-8 rounded-full cursor-pointer border-2 transition-all ${color.value.split(" ")[0] // Take background class
+                        } ${field.value === color.name
                           ? "border-primary scale-110"
                           : "border-transparent hover:scale-105"
-                      }`}
+                        }`}
                       title={color.label}
                     />
                   ))}

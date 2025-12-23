@@ -11,6 +11,7 @@ import { NoteForm } from "./note-form";
 import ReactMarkdown from "react-markdown";
 import { getNoteColor } from "@/lib/constants";
 import clsx from "clsx";
+import remarkGfm from "remark-gfm";
 import { VersionHistoryDialog } from "./version-history-dialog";
 import { NoteViewDialog } from "./note-view-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -116,7 +117,7 @@ export function NoteCard({ note }: NoteCardProps) {
         </CardHeader>
         <CardContent className="pb-2">
           <div className="text-sm prose dark:prose-invert prose-sm max-w-none line-clamp-4">
-            <ReactMarkdown>{note.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col items-start gap-2 pt-2">

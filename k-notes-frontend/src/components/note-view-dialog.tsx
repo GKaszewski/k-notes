@@ -7,6 +7,7 @@ import { type Note } from "@/hooks/use-notes";
 import { Edit, Calendar, Pin } from "lucide-react";
 import { getNoteColor } from "@/lib/constants";
 import clsx from "clsx";
+import remarkGfm from "remark-gfm";
 
 
 interface NoteViewDialogProps {
@@ -39,7 +40,7 @@ export function NoteViewDialog({ note, open, onOpenChange, onEdit }: NoteViewDia
 
                 <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
                     <div className="prose dark:prose-invert max-w-none text-base leading-relaxed break-words pb-6">
-                        <ReactMarkdown>{note.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
                     </div>
                 </div>
 
