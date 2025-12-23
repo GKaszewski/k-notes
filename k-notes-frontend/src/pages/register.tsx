@@ -26,7 +26,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const { mutate: register, isPending } = useRegister();
-  
+
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -43,9 +43,9 @@ export default function RegisterPage() {
     }, {
       onError: (error: any) => {
         if (error instanceof ApiError) {
-            toast.error(error.message);
+          toast.error(error.message);
         } else {
-            toast.error("Failed to register");
+          toast.error("Failed to register");
         }
       },
     });
@@ -55,10 +55,10 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 relative">
-       <div className="absolute top-4 right-4">
-          <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
-              <Settings className="h-5 w-5" />
-          </Button>
+      <div className="absolute top-4 right-4">
+        <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+          <Settings className="h-5 w-5" />
+        </Button>
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
@@ -96,7 +96,7 @@ export default function RegisterPage() {
                   </FormItem>
                 )}
               />
-               <FormField
+              <FormField
                 control={form.control}
                 name="confirmPassword"
                 render={({ field }) => (
@@ -124,7 +124,7 @@ export default function RegisterPage() {
           </p>
         </CardFooter>
       </Card>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} dataManagementEnabled={false} />
     </div>
   );
 }

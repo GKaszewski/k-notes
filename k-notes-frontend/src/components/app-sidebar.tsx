@@ -32,35 +32,35 @@ export function AppSidebar() {
 
   return (
     <>
-    <Sidebar collapsible="icon">
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>K-Notes</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.url} tooltip={item.title}>
-                    <Link to={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
+      <Sidebar collapsible="icon">
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>K-Notes</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {items.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url} tooltip={item.title}>
+                      <Link to={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => setSettingsOpen(true)} tooltip="Settings">
+                    <Settings />
+                    <span>Settings</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
-              
-              <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => setSettingsOpen(true)} tooltip="Settings">
-                      <Settings />
-                      <span>Settings</span>
-                  </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
-    <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} dataManagementEnabled />
     </>
   )
 }

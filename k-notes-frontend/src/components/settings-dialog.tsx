@@ -10,9 +10,10 @@ import { Separator } from "@/components/ui/separator";
 interface SettingsDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    dataManagementEnabled: boolean;
 }
 
-export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, dataManagementEnabled }: SettingsDialogProps) {
     const [url, setUrl] = useState("http://localhost:3000");
 
     useEffect(() => {
@@ -31,7 +32,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             localStorage.setItem("k_notes_api_url", cleanUrl);
             toast.success("Settings saved. Please refresh the page.");
             onOpenChange(false);
-            window.location.reload(); 
+            window.location.reload();
         } catch (e) {
             toast.error("Invalid URL");
         }
@@ -97,31 +98,34 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     </div>
                 </div>
 
-                <Separator className="my-2" />
+                {dataManagementEnabled && <>
+                    <Separator className="my-2" />
 
-                <div className="py-4 space-y-4">
-                    <div className="flex flex-col space-y-2">
-                        <h4 className="font-medium leading-none">Data Management</h4>
-                        <p className="text-sm text-muted-foreground">
-                            Export your notes for backup or import from a JSON file.
-                        </p>
+                    <div className="py-4 space-y-4">
+                        <div className="flex flex-col space-y-2">
+                            <h4 className="font-medium leading-none">Data Management</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Export your notes for backup or import from a JSON file.
+                            </p>
+                        </div>
+                        <div className="flex gap-4">
+                            <Button variant="outline" onClick={handleExport}>
+                                Export Data
+                            </Button>
+                            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                Import Data
+                            </Button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept=".json"
+                                onChange={handleImport}
+                            />
+                        </div>
                     </div>
-                    <div className="flex gap-4">
-                        <Button variant="outline" onClick={handleExport}>
-                            Export Data
-                        </Button>
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                            Import Data
-                        </Button>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept=".json"
-                            onChange={handleImport}
-                        />
-                    </div>
-                </div>
+                </>}
+
                 <DialogFooter>
                     <Button onClick={handleSave}>Save changes</Button>
                 </DialogFooter>

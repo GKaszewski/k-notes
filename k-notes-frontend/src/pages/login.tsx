@@ -22,7 +22,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const { mutate: login, isPending } = useLogin();
-  
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -48,9 +48,9 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 relative">
       <div className="absolute top-4 right-4">
-          <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
-              <Settings className="h-5 w-5" />
-          </Button>
+        <Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}>
+          <Settings className="h-5 w-5" />
+        </Button>
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
@@ -103,7 +103,7 @@ export default function LoginPage() {
           </p>
         </CardFooter>
       </Card>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} dataManagementEnabled={false} />
     </div>
   );
 }
