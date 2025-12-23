@@ -1047,6 +1047,7 @@ dependencies = [
  "axum",
  "axum-login",
  "chrono",
+ "dotenvy",
  "notes-domain",
  "notes-infra",
  "password-auth",

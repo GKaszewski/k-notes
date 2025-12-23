@@ -19,50 +19,15 @@ use notes_infra::{
 };
 
 mod auth;
+mod config;
 mod dto;
 mod error;
 mod routes;
 mod state;
 
 use auth::AuthBackend;
+use config::Config;
 use state::AppState;
-
-/// Server configuration
-pub struct ServerConfig {
-    pub host: String,
-    pub port: u16,
-    pub database_url: String,
-    pub session_secret: String,
-}
-
-impl Default for ServerConfig {
-    fn default() -> Self {
-        Self {
-            host: "127.0.0.1".to_string(),
-            port: 3000,
-            database_url: "sqlite:data.db?mode=rwc".to_string(),
-            session_secret: "k-notes-super-secret-key-must-be-at-least-64-bytes-long!!!!"
-                .to_string(),
-        }
-    }
-}
-
-impl ServerConfig {
-    pub fn from_env() -> Self {
-        Self {
-            host: std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string()),
-            port: std::env::var("PORT")
-                .ok()
-                .and_then(|p| p.parse().ok())
-                .unwrap_or(3000),
-            database_url: std::env::var("DATABASE_URL")
-                .unwrap_or_else(|_| "sqlite:data.db?mode=rwc".to_string()),
-            session_secret: std::env::var("SESSION_SECRET").unwrap_or_else(|_| {
-                "k-notes-super-secret-key-must-be-at-least-64-bytes-long!!!!".to_string()
-            }),
-        }
-    }
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -76,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // Load configuration
-    let config = ServerConfig::from_env();
+    let config = Config::from_env();
 
     // Setup database
     tracing::info!("Connecting to database: {}", config.database_url);
@@ -112,30 +77,35 @@ async fn main() -> anyhow::Result<()> {
     // Auth layer
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
+    // Parse CORS origins
+    let mut cors = CorsLayer::new()
+        .allow_methods([
+            axum::http::Method::GET,
+            axum::http::Method::POST,
+            axum::http::Method::PATCH,
+            axum::http::Method::DELETE,
+            axum::http::Method::OPTIONS,
+        ])
+        .allow_headers([
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::ACCEPT,
+            axum::http::header::CONTENT_TYPE,
+        ])
+        .allow_credentials(true);
+
+    // Add allowed origins
+    for origin in &config.cors_allowed_origins {
+        if let Ok(value) = origin.parse::<axum::http::HeaderValue>() {
+            cors = cors.allow_origin(value);
+        } else {
+            tracing::warn!("Invalid CORS origin: {}", origin);
+        }
+    }
+
     // Build the application
     let app = Router::new()
         .nest("/api/v1", routes::api_v1_router())
-        .layer(
-            CorsLayer::new()
-                .allow_origin(
-                    "http://localhost:5173"
-                        .parse::<axum::http::HeaderValue>()
-                        .unwrap(),
-                )
-                .allow_methods([
-                    axum::http::Method::GET,
-                    axum::http::Method::POST,
-                    axum::http::Method::PATCH,
-                    axum::http::Method::DELETE,
-                    axum::http::Method::OPTIONS,
-                ])
-                .allow_headers([
-                    axum::http::header::AUTHORIZATION,
-                    axum::http::header::ACCEPT,
-                    axum::http::header::CONTENT_TYPE,
-                ])
-                .allow_credentials(true),
-        )
+        .layer(cors)
         .layer(auth_layer)
         .layer(TraceLayer::new_for_http())
         .with_state(state);

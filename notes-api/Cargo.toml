@@ -44,3 +44,4 @@ tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 
 # Database
 sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio"] }
+dotenvy = "0.15.7"
