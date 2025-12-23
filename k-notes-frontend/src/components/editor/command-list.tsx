@@ -1,7 +1,7 @@
 
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Heading1, Heading2, Heading3, List, ListOrdered, CheckSquare, Type, Quote, Code } from 'lucide-react';
+
 
 export interface CommandItemProps {
     title: string;

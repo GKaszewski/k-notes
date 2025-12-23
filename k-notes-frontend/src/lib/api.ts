@@ -50,35 +50,50 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
         ...options,
         headers,
         credentials: "include", // Important for cookies!
+        // signal: controller.signal, // Removing signal, using race instead
     };
 
-    const response = await fetch(url, config);
+    try {
+        const fetchPromise = fetch(url, config);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new TypeError("Network request timed out")), 3000)
+        );
 
-    if (!response.ok) {
-        // Try to parse error message
-        let errorMessage = "An error occurred";
-        try {
-            const errorData = await response.json();
-            errorMessage = errorData.error?.message || errorData.message || errorMessage;
-        } catch {
-            // failed to parse json
+        const response = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
+        // clearTimeout(timeoutId); // Not needed with race logic here (though leaking timer? No, race settles.)
+
+
+        if (!response.ok) {
+            // Try to parse error message
+            let errorMessage = "An error occurred";
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error?.message || errorData.message || errorMessage;
+            } catch {
+                // failed to parse json
+            }
+
+            throw new ApiError(response.status, errorMessage);
         }
 
-        throw new ApiError(response.status, errorMessage);
-    }
+        // For 204 No Content or empty responses
+        if (response.status === 204) {
+            return null;
+        }
 
-    // For 204 No Content or empty responses
-    if (response.status === 204) {
-        return null;
-    }
+        // Try to parse JSON
+        try {
+            return await response.json();
+        } catch {
+            return null;
+        }
+    } catch (error) {
 
-    // Try to parse JSON
-    try {
-        return await response.json();
-    } catch {
-        return null;
+        throw error;
     }
 }
+
+
 
 export const api = {
     get: (endpoint: string) => fetchWithAuth(endpoint, { method: "GET" }),

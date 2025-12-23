@@ -4,8 +4,11 @@ import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
 import Layout from "@/components/layout";
+import { useSync } from "@/lib/sync";
 
 function App() {
+  useSync();
+
   return (
     <Routes>
       {/* Public Routes (only accessible if NOT logged in) */}
@@ -17,8 +20,8 @@ function App() {
       {/* Protected Routes (only accessible if logged in) */}
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/archive" element={<DashboardPage />} />
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/archive" element={<DashboardPage />} />
         </Route>
       </Route>
 

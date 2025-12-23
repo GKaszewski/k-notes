@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { addToMutationQueue } from "@/lib/db";
+import { toast } from "sonner";
 
 export interface Note {
     id: string;
@@ -16,6 +18,7 @@ export interface Note {
 export interface Tag {
     id: string;
     name: string;
+    created_at?: string;
 }
 
 export interface CreateNoteInput {
@@ -61,7 +64,44 @@ export function useCreateNote() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: CreateNoteInput) => api.post("/notes", data),
+        mutationFn: async (data: CreateNoteInput) => {
+            const queueOffline = async () => {
+                console.log("Queueing offline creation...");
+                await addToMutationQueue({
+                    type: "POST",
+                    endpoint: "/notes",
+                    body: data,
+                });
+                console.log("Offline creation queued.");
+                toast.info("Note created offline. Will sync when online.");
+                return {
+                    id: crypto.randomUUID(),
+                    ...data,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    is_pinned: data.is_pinned || false,
+                    is_archived: false,
+                    tags: [],
+                    color: "default"
+                };
+            };
+
+            if (!navigator.onLine) {
+                console.log("Navigator is offline, queueing");
+                return queueOffline();
+            }
+
+            try {
+                return await api.post("/notes", data);
+            } catch (error: any) {
+                console.error("API Error in createNote:", error);
+                if (!navigator.onLine || error.name === 'AbortError' || error instanceof TypeError) {
+                    console.log("Falling back to offline queue due to error");
+                    return queueOffline();
+                }
+                throw error;
+            }
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["notes"] });
             queryClient.invalidateQueries({ queryKey: ["tags"] });
@@ -73,7 +113,30 @@ export function useUpdateNote() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, ...data }: UpdateNoteInput) => api.patch(`/notes/${id}`, data),
+        mutationFn: async ({ id, ...data }: UpdateNoteInput) => {
+            const queueOffline = async () => {
+                await addToMutationQueue({
+                    type: "PATCH",
+                    endpoint: `/notes/${id}`,
+                    body: data,
+                });
+                toast.info("Note updated offline. Will sync when online.");
+                return { id, ...data };
+            };
+
+            if (!navigator.onLine) {
+                return queueOffline();
+            }
+
+            try {
+                return await api.patch(`/notes/${id}`, data);
+            } catch (error: any) {
+                if (!navigator.onLine || error.name === 'AbortError' || error instanceof TypeError) {
+                    return queueOffline();
+                }
+                throw error;
+            }
+        },
 
         // Optimistic update
         onMutate: async (updatedNote) => {
@@ -118,7 +181,29 @@ export function useDeleteNote() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (id: string) => api.delete(`/notes/${id}`),
+        mutationFn: async (id: string) => {
+            const queueOffline = async () => {
+                await addToMutationQueue({
+                    type: "DELETE",
+                    endpoint: `/notes/${id}`,
+                });
+                toast.info("Note deleted offline. Will sync when online.");
+                return { id };
+            };
+
+            if (!navigator.onLine) {
+                return queueOffline();
+            }
+
+            try {
+                return await api.delete(`/notes/${id}`);
+            } catch (error: any) {
+                if (!navigator.onLine || error.name === 'AbortError' || error instanceof TypeError) {
+                    return queueOffline();
+                }
+                throw error;
+            }
+        },
 
         // Optimistic delete
         onMutate: async (deletedId) => {
@@ -202,4 +287,3 @@ export function useRenameTag() {
         },
     });
 }
-
