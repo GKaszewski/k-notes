@@ -277,6 +277,40 @@ impl TagService {
 
         self.tag_repo.delete(id).await
     }
+
+    /// Rename a tag
+    pub async fn rename_tag(&self, id: Uuid, user_id: Uuid, new_name: &str) -> DomainResult<Tag> {
+        let new_name = new_name.trim().to_lowercase();
+        if new_name.is_empty() {
+            return Err(DomainError::validation("Tag name cannot be empty"));
+        }
+
+        // Find the existing tag
+        let mut tag = self
+            .tag_repo
+            .find_by_id(id)
+            .await?
+            .ok_or(DomainError::TagNotFound(id))?;
+
+        // Authorization check
+        if tag.user_id != user_id {
+            return Err(DomainError::unauthorized(
+                "Cannot rename another user's tag",
+            ));
+        }
+
+        // Check if new name already exists (and it's not the same tag)
+        if let Some(existing) = self.tag_repo.find_by_name(user_id, &new_name).await? {
+            if existing.id != id {
+                return Err(DomainError::TagAlreadyExists(new_name));
+            }
+        }
+
+        // Update the name
+        tag.name = new_name;
+        self.tag_repo.save(&tag).await?;
+        Ok(tag)
+    }
 }
 
 /// Service for User operations (OIDC-ready)

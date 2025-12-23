@@ -64,6 +64,7 @@ export function useCreateNote() {
         mutationFn: (data: CreateNoteInput) => api.post("/notes", data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["notes"] });
+            queryClient.invalidateQueries({ queryKey: ["tags"] });
         },
     });
 }
@@ -73,8 +74,42 @@ export function useUpdateNote() {
 
     return useMutation({
         mutationFn: ({ id, ...data }: UpdateNoteInput) => api.patch(`/notes/${id}`, data),
-        onSuccess: () => {
+
+        // Optimistic update
+        onMutate: async (updatedNote) => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ["notes"] });
+
+            // Snapshot the previous value
+            const previousNotes = queryClient.getQueriesData({ queryKey: ["notes"] });
+
+            // Optimistically update all matching queries
+            queryClient.setQueriesData({ queryKey: ["notes"] }, (old: Note[] | undefined) => {
+                if (!old) return old;
+                return old.map((note) =>
+                    note.id === updatedNote.id
+                        ? { ...note, ...updatedNote }
+                        : note
+                );
+            });
+
+            // Return a context object with the snapshotted value
+            return { previousNotes };
+        },
+
+        // If the mutation fails, use the context returned from onMutate to roll back
+        onError: (_err, _updatedNote, context) => {
+            if (context?.previousNotes) {
+                context.previousNotes.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
+            }
+        },
+
+        // Always refetch after error or success
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["notes"] });
+            queryClient.invalidateQueries({ queryKey: ["tags"] });
         },
     });
 }
@@ -84,8 +119,38 @@ export function useDeleteNote() {
 
     return useMutation({
         mutationFn: (id: string) => api.delete(`/notes/${id}`),
-        onSuccess: () => {
+
+        // Optimistic delete
+        onMutate: async (deletedId) => {
+            // Cancel any outgoing refetches
+            await queryClient.cancelQueries({ queryKey: ["notes"] });
+
+            // Snapshot the previous value
+            const previousNotes = queryClient.getQueriesData({ queryKey: ["notes"] });
+
+            // Optimistically remove from all matching queries
+            queryClient.setQueriesData({ queryKey: ["notes"] }, (old: Note[] | undefined) => {
+                if (!old) return old;
+                return old.filter((note) => note.id !== deletedId);
+            });
+
+            // Return a context object with the snapshotted value
+            return { previousNotes };
+        },
+
+        // If the mutation fails, use the context returned from onMutate to roll back
+        onError: (_err, _deletedId, context) => {
+            if (context?.previousNotes) {
+                context.previousNotes.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
+            }
+        },
+
+        // Always refetch after error or success
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["notes"] });
+            queryClient.invalidateQueries({ queryKey: ["tags"] });
         },
     });
 }
@@ -112,3 +177,29 @@ export function useTags() {
         queryFn: () => api.get("/tags"),
     });
 }
+
+export function useDeleteTag() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => api.delete(`/tags/${id}`),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["tags"] });
+            queryClient.invalidateQueries({ queryKey: ["notes"] });
+        },
+    });
+}
+
+export function useRenameTag() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, name }: { id: string; name: string }) =>
+            api.patch(`/tags/${id}`, { name }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["tags"] });
+            queryClient.invalidateQueries({ queryKey: ["notes"] });
+        },
+    });
+}
+

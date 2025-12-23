@@ -33,9 +33,23 @@ pub async fn list_notes(
         )))?;
     let user_id = user.id();
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
+    // Build the filter, looking up tag_id by name if needed
+    let mut filter = notes_domain::NoteFilter::new();
+    filter.is_pinned = query.pinned;
+    filter.is_archived = query.archived;
 
-    let notes = service.list_notes(user_id, query.into()).await?;
+    // Look up tag by name if provided
+    if let Some(ref tag_name) = query.tag {
+        if let Ok(Some(tag)) = state.tag_repo.find_by_name(user_id, tag_name).await {
+            filter.tag_id = Some(tag.id);
+        } else {
+            // Tag not found, return empty results
+            return Ok(Json(vec![]));
+        }
+    }
+
+    let service = NoteService::new(state.note_repo, state.tag_repo);
+    let notes = service.list_notes(user_id, filter).await?;
     let response: Vec<NoteResponse> = notes.into_iter().map(NoteResponse::from).collect();
 
     Ok(Json(response))

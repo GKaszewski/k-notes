@@ -36,5 +36,8 @@ pub fn api_v1_router() -> Router<AppState> {
         .route("/import", post(import_export::import_data))
         // Tag routes
         .route("/tags", get(tags::list_tags).post(tags::create_tag))
-        .route("/tags/{id}", delete(tags::delete_tag))
+        .route(
+            "/tags/{id}",
+            delete(tags::delete_tag).patch(tags::rename_tag),
+        )
 }

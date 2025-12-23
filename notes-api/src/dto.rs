@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use notes_domain::{Note, NoteFilter, Tag};
+use notes_domain::{Note, Tag};
 
 /// Request to create a new note
 #[derive(Debug, Deserialize, Validate)]
@@ -47,17 +47,8 @@ pub struct UpdateNoteRequest {
 pub struct ListNotesQuery {
     pub pinned: Option<bool>,
     pub archived: Option<bool>,
-    pub tag: Option<Uuid>,
-}
-
-impl From<ListNotesQuery> for NoteFilter {
-    fn from(query: ListNotesQuery) -> Self {
-        let mut filter = NoteFilter::new();
-        filter.is_pinned = query.pinned;
-        filter.is_archived = query.archived;
-        filter.tag_id = query.tag;
-        filter
-    }
+    /// Tag name to filter by (will be looked up by route handler)
+    pub tag: Option<String>,
 }
 
 /// Query parameters for search
@@ -115,6 +106,13 @@ impl From<Note> for NoteResponse {
 /// Request to create a new tag
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateTagRequest {
+    #[validate(length(min = 1, max = 50, message = "Tag name must be 1-50 characters"))]
+    pub name: String,
+}
+
+/// Request to rename a tag
+#[derive(Debug, Deserialize, Validate)]
+pub struct RenameTagRequest {
     #[validate(length(min = 1, max = 50, message = "Tag name must be 1-50 characters"))]
     pub name: String,
 }

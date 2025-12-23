@@ -13,6 +13,8 @@ import { getNoteColor } from "@/lib/constants";
 import clsx from "clsx";
 import { VersionHistoryDialog } from "./version-history-dialog";
 import { NoteViewDialog } from "./note-view-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useBulkSelection } from "@/components/bulk-selection-context";
 
 interface NoteCardProps {
   note: Note;
@@ -25,63 +27,87 @@ export function NoteCard({ note }: NoteCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
 
+  // Bulk selection
+  const { isSelected, toggleSelection, isBulkMode } = useBulkSelection();
+  const selected = isSelected(note.id);
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleSelection(note.id);
+  };
+
   // Archive toggle
   const toggleArchive = (e: React.MouseEvent) => {
     e.stopPropagation();
-    updateNote({ 
-        id: note.id,
-        is_archived: !note.is_archived 
+    updateNote({
+      id: note.id,
+      is_archived: !note.is_archived
     });
   };
-  
+
   // Pin toggle
   const togglePin = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      updateNote({
-          id: note.id,
-          is_pinned: !note.is_pinned
-      });
+    e.stopPropagation();
+    updateNote({
+      id: note.id,
+      is_pinned: !note.is_pinned
+    });
   };
 
   const handleDelete = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (confirm("Are you sure?")) {
-          deleteNote(note.id);
-      }
+    e.stopPropagation();
+    if (confirm("Are you sure?")) {
+      deleteNote(note.id);
+    }
   }
-  
+
   const handleEdit = (data: any) => {
-      const tags = data.tags
-        ? data.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
-        : [];
-      
-      updateNote({
-          id: note.id,
-          ...data,
-          tags,
-      }, {
-          onSuccess: () => {
-              setEditing(false);
-              toast.success("Note updated");
-          }
-      });
+    const tags = data.tags
+      ? data.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : [];
+
+    updateNote({
+      id: note.id,
+      ...data,
+      tags,
+    }, {
+      onSuccess: () => {
+        setEditing(false);
+        toast.success("Note updated");
+      }
+    });
   }
 
   const colorClass = getNoteColor(note.color);
 
   return (
     <>
-      <Card 
+      <Card
         className={clsx(
-          "relative group transition-all hover:shadow-md cursor-pointer", 
+          "relative group transition-all hover:shadow-md cursor-pointer",
           colorClass,
-          note.is_pinned ? 'border-primary shadow-sm' : ''
+          note.is_pinned ? 'border-primary shadow-sm' : '',
+          selected && 'ring-2 ring-primary ring-offset-2'
         )}
-        onClick={() => setViewOpen(true)}
+        onClick={() => !isBulkMode && setViewOpen(true)}
       >
+        {/* Bulk selection checkbox */}
+        <div
+          className={clsx(
+            "absolute top-2 left-2 z-10 transition-opacity",
+            isBulkMode ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
+          onClick={handleCheckboxClick}
+        >
+          <Checkbox
+            checked={selected}
+            className="h-5 w-5 bg-background/80 backdrop-blur-sm border-2"
+          />
+        </div>
+
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
-            <CardTitle className="text-lg font-semibold line-clamp-1">{note.title}</CardTitle>
+            <CardTitle className={clsx("text-lg font-semibold line-clamp-1", isBulkMode && "pl-6")}>{note.title}</CardTitle>
             {note.is_pinned && <Pin className="h-4 w-4 text-primary rotate-45" />}
           </div>
           <CardDescription className="text-xs opacity-70">
@@ -103,19 +129,19 @@ export function NoteCard({ note }: NoteCardProps) {
           </div>
           <div className="flex justify-end w-full gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setHistoryOpen(true); }} title="History">
-                <History className="h-4 w-4" />
+              <History className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
-                <Edit className="h-4 w-4" />
+              <Edit className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={togglePin}>
-                 <Pin className={`h-4 w-4 ${note.is_pinned ? 'fill-current' : ''}`} />
+              <Pin className={`h-4 w-4 ${note.is_pinned ? 'fill-current' : ''}`} />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={toggleArchive}>
-                <Archive className={`h-4 w-4 ${note.is_archived ? 'fill-current' : ''}`} />
+              <Archive className={`h-4 w-4 ${note.is_archived ? 'fill-current' : ''}`} />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </CardFooter>
@@ -123,24 +149,24 @@ export function NoteCard({ note }: NoteCardProps) {
 
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Edit Note</DialogTitle>
-            </DialogHeader>
-            <NoteForm 
-                defaultValues={{
-                    title: note.title,
-                    content: note.content,
-                    is_pinned: note.is_pinned,
-                    color: note.color,
-                    tags: note.tags.map(t => t.name).join(", "),
-                }}
-                onSubmit={handleEdit}
-                submitLabel="Update"
-             />
+          <DialogHeader>
+            <DialogTitle>Edit Note</DialogTitle>
+          </DialogHeader>
+          <NoteForm
+            defaultValues={{
+              title: note.title,
+              content: note.content,
+              is_pinned: note.is_pinned,
+              color: note.color,
+              tags: note.tags.map(t => t.name).join(", "),
+            }}
+            onSubmit={handleEdit}
+            submitLabel="Update"
+          />
         </DialogContent>
       </Dialog>
-      
-      <VersionHistoryDialog 
+
+      <VersionHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         noteId={note.id}

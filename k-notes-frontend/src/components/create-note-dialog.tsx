@@ -6,16 +6,27 @@ import { NoteForm } from "./note-form";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
 
-export function CreateNoteDialog() {
-  const [open, setOpen] = useState(false);
+interface CreateNoteDialogProps {
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export function CreateNoteDialog({ trigger, open: controlledOpen, onOpenChange }: CreateNoteDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const { mutate: createNote, isPending } = useCreateNote();
+
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? (onOpenChange ?? (() => { })) : setInternalOpen;
 
   const onSubmit = (data: any) => {
     // Parse tags
     const tags = data.tags
-        ? data.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
-        : [];
-        
+      ? data.tags.split(",").map((t: string) => t.trim()).filter(Boolean)
+      : [];
+
     createNote({ ...data, tags }, {
       onSuccess: () => {
         toast.success("Note created");
@@ -27,14 +38,25 @@ export function CreateNoteDialog() {
     });
   };
 
+  const defaultTrigger = (
+    <Button>
+      <Plus className="mr-2 h-4 w-4" />
+      New Note
+    </Button>
+  );
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Note
-        </Button>
-      </DialogTrigger>
+      {trigger !== undefined && (
+        <DialogTrigger asChild>
+          {trigger ?? defaultTrigger}
+        </DialogTrigger>
+      )}
+      {trigger === undefined && (
+        <DialogTrigger asChild>
+          {defaultTrigger}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create Note</DialogTitle>
