@@ -1,0 +1,19 @@
+[package]
+name = "notes-infra"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+notes-domain = { path = "../notes-domain" }
+async-trait = "0.1.89"
+chrono = { version = "0.4.42", features = ["serde"] }
+sqlx = { version = "0.8.6", features = [
+    "sqlite",
+    "runtime-tokio",
+    "chrono",
+    "migrate",
+] }
+thiserror = "2.0.17"
+tokio = { version = "1.48.0", features = ["full"] }
+tracing = "0.1"
+uuid = { version = "1.19.0", features = ["v4", "serde"] }

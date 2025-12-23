@@ -1,0 +1,35 @@
+//! Route definitions and module structure
+
+pub mod auth;
+pub mod notes;
+pub mod tags;
+
+use axum::{
+    Router,
+    routing::{delete, get, post},
+};
+
+use crate::state::AppState;
+
+/// Create the API v1 router
+pub fn api_v1_router() -> Router<AppState> {
+    Router::new()
+        // Auth routes
+        .route("/auth/register", post(auth::register))
+        .route("/auth/login", post(auth::login))
+        .route("/auth/logout", post(auth::logout))
+        .route("/auth/me", get(auth::me))
+        // Note routes
+        .route("/notes", get(notes::list_notes).post(notes::create_note))
+        .route(
+            "/notes/{id}",
+            get(notes::get_note)
+                .patch(notes::update_note)
+                .delete(notes::delete_note),
+        )
+        // Search route
+        .route("/search", get(notes::search_notes))
+        // Tag routes
+        .route("/tags", get(tags::list_tags).post(tags::create_tag))
+        .route("/tags/{id}", delete(tags::delete_tag))
+}
