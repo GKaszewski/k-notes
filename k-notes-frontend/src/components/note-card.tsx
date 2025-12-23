@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import { getNoteColor } from "@/lib/constants";
 import clsx from "clsx";
 import { VersionHistoryDialog } from "./version-history-dialog";
+import { NoteViewDialog } from "./note-view-dialog";
 
 interface NoteCardProps {
   note: Note;
@@ -22,9 +23,11 @@ export function NoteCard({ note }: NoteCardProps) {
   const { mutate: updateNote } = useUpdateNote();
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
 
   // Archive toggle
-  const toggleArchive = () => {
+  const toggleArchive = (e: React.MouseEvent) => {
+    e.stopPropagation();
     updateNote({ 
         id: note.id,
         is_archived: !note.is_archived 
@@ -32,14 +35,16 @@ export function NoteCard({ note }: NoteCardProps) {
   };
   
   // Pin toggle
-  const togglePin = () => {
+  const togglePin = (e: React.MouseEvent) => {
+      e.stopPropagation();
       updateNote({
           id: note.id,
           is_pinned: !note.is_pinned
       });
   };
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+      e.stopPropagation();
       if (confirm("Are you sure?")) {
           deleteNote(note.id);
       }
@@ -66,11 +71,14 @@ export function NoteCard({ note }: NoteCardProps) {
 
   return (
     <>
-      <Card className={clsx(
-          "relative group transition-all hover:shadow-md", 
+      <Card 
+        className={clsx(
+          "relative group transition-all hover:shadow-md cursor-pointer", 
           colorClass,
           note.is_pinned ? 'border-primary shadow-sm' : ''
-      )}>
+        )}
+        onClick={() => setViewOpen(true)}
+      >
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <CardTitle className="text-lg font-semibold line-clamp-1">{note.title}</CardTitle>
@@ -94,10 +102,10 @@ export function NoteCard({ note }: NoteCardProps) {
             ))}
           </div>
           <div className="flex justify-end w-full gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={() => setHistoryOpen(true)} title="History">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setHistoryOpen(true); }} title="History">
                 <History className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={() => setEditing(true)}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
                 <Edit className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={togglePin}>
@@ -138,6 +146,14 @@ export function NoteCard({ note }: NoteCardProps) {
         noteId={note.id}
         noteTitle={note.title}
       />
+
+      <NoteViewDialog
+        open={viewOpen}
+        onOpenChange={setViewOpen}
+        note={note}
+        onEdit={() => setEditing(true)}
+      />
     </>
   );
 }
+

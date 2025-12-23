@@ -3,13 +3,18 @@ import { useNotes, useSearchNotes } from "@/hooks/use-notes";
 import { CreateNoteDialog } from "@/components/create-note-dialog";
 import { NoteCard } from "@/components/note-card";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, LayoutGrid, List } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import clsx from "clsx";
 
 export default function DashboardPage() {
     const location = useLocation();
     const isArchive = location.pathname === "/archive";
     
+    // View mode state
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
     
@@ -36,7 +41,29 @@ export default function DashboardPage() {
                     />
                 </div>
                 
-                {!isArchive && <CreateNoteDialog />}
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-muted/50 p-1 rounded-lg border">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={clsx("h-8 w-8", viewMode === "grid" && "bg-background shadow-sm")}
+                            onClick={() => setViewMode("grid")}
+                            title="Grid View"
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className={clsx("h-8 w-8", viewMode === "list" && "bg-background shadow-sm")}
+                            onClick={() => setViewMode("list")}
+                            title="List View"
+                        >
+                            <List className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    {!isArchive && <CreateNoteDialog />}
+                </div>
             </div>
 
             {/* Title */}
@@ -65,8 +92,12 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Notes Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
+            {/* Notes Grid/List */}
+            <div className={clsx(
+                viewMode === "grid" 
+                    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start"
+                    : "flex flex-col gap-4 max-w-3xl mx-auto"
+            )}>
                 {/* Pinned Notes First (if not searching and not archive) */}
                 {!searchQuery && !isArchive && displayNotes?.filter((n: any) => n.is_pinned).map((note: any) => (
                         <NoteCard key={note.id} note={note} />
