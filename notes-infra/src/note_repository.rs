@@ -196,18 +196,29 @@ impl NoteRepository for SqliteNoteRepository {
     async fn search(&self, user_id: Uuid, query: &str) -> DomainResult<Vec<Note>> {
         let user_id_str = user_id.to_string();
 
-        // Use FTS5 for full-text search
+        let like_query = format!("%{}%", query);
+
+        // Use FTS5 for full-text search OR tag name match
         let rows: Vec<NoteRow> = sqlx::query_as(
             r#"
-            SELECT n.id, n.user_id, n.title, n.content, n.color, n.is_pinned, n.is_archived, n.created_at, n.updated_at
+            SELECT DISTINCT n.id, n.user_id, n.title, n.content, n.color, n.is_pinned, n.is_archived, n.created_at, n.updated_at
             FROM notes n
-            INNER JOIN notes_fts fts ON n.rowid = fts.rowid
-            WHERE n.user_id = ? AND notes_fts MATCH ?
-            ORDER BY rank
+            WHERE n.user_id = ? 
+            AND (
+                n.rowid IN (SELECT rowid FROM notes_fts WHERE notes_fts MATCH ?)
+                OR
+                EXISTS (
+                    SELECT 1 FROM note_tags nt 
+                    JOIN tags t ON nt.tag_id = t.id 
+                    WHERE nt.note_id = n.id AND t.name LIKE ?
+                )
+            )
+            ORDER BY n.updated_at DESC
             "#
         )
         .bind(&user_id_str)
         .bind(query)
+        .bind(like_query)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| DomainError::RepositoryError(e.to_string()))?;
