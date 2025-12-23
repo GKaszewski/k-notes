@@ -94,19 +94,25 @@ async fn main() -> anyhow::Result<()> {
         .allow_credentials(true);
 
     // Add allowed origins
+    let mut allowed_origins = Vec::new();
     for origin in &config.cors_allowed_origins {
+        tracing::debug!("Allowing CORS origin: {}", origin);
         if let Ok(value) = origin.parse::<axum::http::HeaderValue>() {
-            cors = cors.allow_origin(value);
+            allowed_origins.push(value);
         } else {
             tracing::warn!("Invalid CORS origin: {}", origin);
         }
     }
 
+    if !allowed_origins.is_empty() {
+        cors = cors.allow_origin(allowed_origins);
+    }
+
     // Build the application
     let app = Router::new()
         .nest("/api/v1", routes::api_v1_router())
-        .layer(cors)
         .layer(auth_layer)
+        .layer(cors)
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

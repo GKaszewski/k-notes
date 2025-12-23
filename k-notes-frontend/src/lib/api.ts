@@ -1,9 +1,29 @@
+declare global {
+    interface Window {
+        env?: {
+            API_URL?: string;
+        };
+    }
+}
+
 const getApiUrl = () => {
+    // 1. Runtime config (Docker)
+    if (window.env?.API_URL) {
+        return `${window.env.API_URL}/api/v1`;
+    }
+    // 2. LocalStorage override
     const stored = localStorage.getItem("k_notes_api_url");
-    return stored ? `${stored}/api/v1` : "http://localhost:3000/api/v1";
+    if (stored) {
+        return `${stored}/api/v1`;
+    }
+    // 3. Default fallback
+    return "http://localhost:3000/api/v1";
 };
 
 export const getBaseUrl = () => {
+    if (window.env?.API_URL) {
+        return window.env.API_URL;
+    }
     const stored = localStorage.getItem("k_notes_api_url");
     return stored ? stored : "http://localhost:3000";
 }
