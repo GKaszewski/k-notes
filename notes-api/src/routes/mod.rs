@@ -1,6 +1,7 @@
 //! Route definitions and module structure
 
 pub mod auth;
+pub mod config;
 pub mod import_export;
 pub mod notes;
 pub mod tags;
@@ -40,4 +41,6 @@ pub fn api_v1_router() -> Router<AppState> {
             "/tags/{id}",
             delete(tags::delete_tag).patch(tags::rename_tag),
         )
+        // System Config
+        .route("/config", get(config::get_config))
 }

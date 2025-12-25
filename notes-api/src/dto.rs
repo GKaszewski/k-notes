@@ -166,3 +166,9 @@ impl From<notes_domain::NoteVersion> for NoteVersionResponse {
         }
     }
 }
+
+/// System configuration response
+#[derive(Debug, Serialize)]
+pub struct ConfigResponse {
+    pub allow_registration: bool,
+}

@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Settings } from "lucide-react";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useRegister } from "@/hooks/use-auth";
+import { useConfig } from "@/hooks/useConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,19 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const { mutate: register, isPending } = useRegister();
+  const { data: config, isLoading: isConfigLoading } = useConfig();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isConfigLoading && config?.allow_registration === false) {
+      toast.error("Registration is currently disabled");
+      navigate("/login");
+    }
+  }, [config, isConfigLoading, navigate]);
+
+  if (isConfigLoading || config?.allow_registration === false) {
+    return null; // Or a loading spinner
+  }
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),

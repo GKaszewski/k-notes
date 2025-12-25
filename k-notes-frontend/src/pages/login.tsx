@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "react-router-dom";
 import { useLogin } from "@/hooks/use-auth";
+import { useConfig } from "@/hooks/useConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const { mutate: login, isPending } = useLogin();
+  const { data: config } = useConfig();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -95,12 +97,14 @@ export default function LoginPage() {
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Don't have an account?{" "}
-            <Link to="/register" className="font-semibold text-primary hover:underline">
-              Sign up
-            </Link>
-          </p>
+          {config?.allow_registration !== false && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Don't have an account?{" "}
+              <Link to="/register" className="font-semibold text-primary hover:underline">
+                Sign up
+              </Link>
+            </p>
+          )}
         </CardFooter>
       </Card>
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} dataManagementEnabled={false} />
