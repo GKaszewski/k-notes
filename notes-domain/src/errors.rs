@@ -47,6 +47,10 @@ pub enum DomainError {
     /// A repository/infrastructure error occurred
     #[error("Repository error: {0}")]
     RepositoryError(String),
+
+    /// An infrastructure adapter error occurred
+    #[error("Infrastructure error: {0}")]
+    InfrastructureError(String),
 }
 
 impl DomainError {

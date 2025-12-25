@@ -356,6 +356,66 @@ impl UserService {
     }
 }
 
+/// Service for Smart Features (Embeddings, Vector Search, Linking)
+pub struct SmartNoteService {
+    embedding_generator: Arc<dyn crate::ports::EmbeddingGenerator>,
+    vector_store: Arc<dyn crate::ports::VectorStore>,
+    link_repo: Arc<dyn crate::ports::LinkRepository>,
+}
+
+impl SmartNoteService {
+    pub fn new(
+        embedding_generator: Arc<dyn crate::ports::EmbeddingGenerator>,
+        vector_store: Arc<dyn crate::ports::VectorStore>,
+        link_repo: Arc<dyn crate::ports::LinkRepository>,
+    ) -> Self {
+        Self {
+            embedding_generator,
+            vector_store,
+            link_repo,
+        }
+    }
+
+    /// Process a note to generate embeddings and find similar notes
+    pub async fn process_note(&self, note: &Note) -> DomainResult<()> {
+        // 1. Generate embedding
+        let embedding = self
+            .embedding_generator
+            .generate_embedding(&note.content)
+            .await?;
+
+        // 2. Upsert to vector store
+        self.vector_store.upsert(note.id, &embedding).await?;
+
+        // 3. Find similar notes
+        // TODO: Make limit configurable
+        let similar = self.vector_store.find_similar(&embedding, 5).await?;
+
+        // 4. Create links
+        let links: Vec<crate::entities::NoteLink> = similar
+            .into_iter()
+            .filter(|(id, _)| *id != note.id) // Exclude self
+            .map(|(target_id, score)| crate::entities::NoteLink::new(note.id, target_id, score))
+            .collect();
+
+        // 5. Save links (replacing old ones)
+        if !links.is_empty() {
+            self.link_repo.delete_links_for_source(note.id).await?;
+            self.link_repo.save_links(&links).await?;
+        }
+
+        Ok(())
+    }
+
+    /// Get related notes for a given note ID
+    pub async fn get_related_notes(
+        &self,
+        note_id: Uuid,
+    ) -> DomainResult<Vec<crate::entities::NoteLink>> {
+        self.link_repo.get_links_for_note(note_id).await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

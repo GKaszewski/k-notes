@@ -8,6 +8,7 @@ import { Edit, Calendar, Pin } from "lucide-react";
 import { getNoteColor } from "@/lib/constants";
 import clsx from "clsx";
 import remarkGfm from "remark-gfm";
+import { RelatedNotes } from "./related-notes";
 
 
 interface NoteViewDialogProps {
@@ -15,9 +16,10 @@ interface NoteViewDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onEdit: () => void;
+    onSelectNote?: (id: string) => void;
 }
 
-export function NoteViewDialog({ note, open, onOpenChange, onEdit }: NoteViewDialogProps) {
+export function NoteViewDialog({ note, open, onOpenChange, onEdit, onSelectNote }: NoteViewDialogProps) {
     const colorClass = getNoteColor(note.color);
 
     return (
@@ -41,6 +43,17 @@ export function NoteViewDialog({ note, open, onOpenChange, onEdit }: NoteViewDia
                 <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
                     <div className="prose dark:prose-invert max-w-none text-base leading-relaxed break-words pb-6">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
+                    </div>
+
+                    {/* Smart Features: Related Notes */}
+                    <div className="pb-4">
+                        <RelatedNotes
+                            noteId={note.id}
+                            onSelectNote={onSelectNote ? (id) => {
+                                onOpenChange(false);
+                                setTimeout(() => onSelectNote(id), 100); // Small delay to allow dialog close animation?
+                            } : undefined}
+                        />
                     </div>
                 </div>
 

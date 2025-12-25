@@ -15,7 +15,11 @@
 //! - [`db::run_migrations`] - Run database migrations
 
 pub mod db;
+#[cfg(feature = "smart-features")]
+pub mod embeddings;
 pub mod factory;
+#[cfg(feature = "sqlite")]
+pub mod link_repository;
 #[cfg(feature = "sqlite")]
 pub mod note_repository;
 pub mod session_store;
@@ -23,11 +27,15 @@ pub mod session_store;
 pub mod tag_repository;
 #[cfg(feature = "sqlite")]
 pub mod user_repository;
+#[cfg(feature = "smart-features")]
+pub mod vector;
 
 // Re-export for convenience
 #[cfg(feature = "sqlite")]
 pub use db::create_pool;
 pub use db::{DatabaseConfig, run_migrations};
+#[cfg(feature = "sqlite")]
+pub use link_repository::SqliteLinkRepository;
 #[cfg(feature = "sqlite")]
 pub use note_repository::SqliteNoteRepository;
 #[cfg(feature = "sqlite")]

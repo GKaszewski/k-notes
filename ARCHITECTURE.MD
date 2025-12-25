@@ -22,6 +22,7 @@ We are decoupling the **Domain Logic** (the "What") from the **Infrastructure** 
 | **API Framework** | **Axum** | Actix-Web |
 | **Database** | **SQLite (via SQLx)** | PostgreSQL |
 | **Search** | **SQLite FTS5** | Meilisearch |
+| **Vector Search** | **Qdrant** | Pgvector |
 | **Authentication** | **Axum Login** | OIDC (Keycloak/Authelia) |
 | **Frontend** | **React + Tailwind + Shadcn/ui** | Vue + Radix |
 
@@ -79,6 +80,7 @@ Plaintext
 - `POST /api/v1/notes` - Create a new note (Accepts Markdown).
 - `PATCH /api/v1/notes/:id` - Partial updates.
 - `GET /api/v1/search?q=query` - Full-text search via FTS5.
+- `GET /api/v1/notes/:id/related` - Get semantically related notes.
 
 ## Guidelines & Principles
 

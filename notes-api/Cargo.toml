@@ -4,9 +4,25 @@ version = "0.1.0"
 edition = "2024"
 default-run = "notes-api"
 
+[features]
+default = ["sqlite", "smart-features"]
+sqlite = [
+    "notes-infra/sqlite",
+    "tower-sessions-sqlx-store/sqlite",
+    "sqlx/sqlite",
+]
+postgres = [
+    "notes-infra/postgres",
+    "tower-sessions-sqlx-store/postgres",
+    "sqlx/postgres",
+]
+smart-features = ["notes-infra/smart-features", "dep:async-nats"]
+
 [dependencies]
 notes-domain = { path = "../notes-domain" }
-notes-infra = { path = "../notes-infra", features = ["sqlite"] }
+notes-infra = { path = "../notes-infra", default-features = false, features = [
+    "sqlite",
+] }
 
 # Web framework
 axum = { version = "0.8.8", features = ["macros"] }
@@ -20,6 +36,7 @@ tower-sessions-sqlx-store = { version = "0.15", features = ["sqlite"] }
 password-auth = "1.0"
 time = "0.3"
 async-trait = "0.1.89"
+async-nats = { version = "0.39", optional = true }
 
 # Async runtime
 tokio = { version = "1.48.0", features = ["full"] }

@@ -15,7 +15,7 @@ use crate::state::AppState;
 
 /// Create the API v1 router
 pub fn api_v1_router() -> Router<AppState> {
-    Router::new()
+    let router = Router::new()
         // Auth routes
         .route("/auth/register", post(auth::register))
         .route("/auth/login", post(auth::login))
@@ -29,7 +29,12 @@ pub fn api_v1_router() -> Router<AppState> {
                 .patch(notes::update_note)
                 .delete(notes::delete_note),
         )
-        .route("/notes/{id}/versions", get(notes::list_note_versions))
+        .route("/notes/{id}/versions", get(notes::list_note_versions));
+
+    #[cfg(feature = "smart-features")]
+    let router = router.route("/notes/{id}/related", get(notes::get_related_notes));
+
+    router
         // Search route
         .route("/search", get(notes::search_notes))
         // Import/Export routes

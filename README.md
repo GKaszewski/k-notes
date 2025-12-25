@@ -11,6 +11,7 @@ A modern, self-hosted note-taking application built with performance, security, 
 - **Rich Text**: Markdown support for note content.
 - **Version History**: Track changes, view history, note diffs, download versions, and restore previous states.
 - **Organization**: Tagging system for easy filtering.
+- **Smart Features**: Semantic search and automatically generated related notes using local embeddings.
 - **Theme**: Dark and Light mode support.
 - **Responsive**: Mobile-friendly UI built with Tailwind CSS.
 - **Architecture**:
@@ -25,6 +26,7 @@ A modern, self-hosted note-taking application built with performance, security, 
 - **Language**: Rust
 - **Framework**: Axum
 - **Database**: SQLite (Default) or Postgres (Supported via feature flag)
+- **Vector Database**: Qdrant (for Smart Features)
 - **Dependency Injection**: Manual wiring for clear boundaries
 
 ### Frontend
@@ -79,6 +81,16 @@ To use PostgreSQL, build with the `postgres` feature:
 cargo run -p notes-api --no-default-features --features notes-infra/postgres
 ```
 *Note: Ensure your `DATABASE_URL` is set to a valid Postgres connection string.*
+
+**Feature Flags (Smart Features):**
+
+The application includes "Smart Features" (semantic search, related notes) enabled by default. These require `fastembed`, `qdrant-client`, and `async-nats`.
+
+To build/run **without** smart features (for faster compilation or lighter deployment):
+
+```bash
+cargo run -p notes-api --no-default-features --features sqlite
+```
 
 #### Frontend
 

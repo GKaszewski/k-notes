@@ -82,6 +82,21 @@ pub async fn create_note(
 
     let note = state.note_service.create_note(domain_req).await?;
 
+    // Publish event
+    #[cfg(feature = "smart-features")]
+    {
+        let payload = serde_json::to_vec(&note).unwrap_or_default();
+        if let Err(e) = state
+            .nats_client
+            .publish("notes.updated", payload.into())
+            .await
+        {
+            tracing::error!("Failed to publish notes.updated event: {}", e);
+        } else {
+            tracing::info!("Published notes.updated event for note {}", note.id);
+        }
+    }
+
     Ok((StatusCode::CREATED, Json(NoteResponse::from(note))))
 }
 
@@ -137,6 +152,21 @@ pub async fn update_note(
 
     let note = state.note_service.update_note(domain_req).await?;
 
+    // Publish event
+    #[cfg(feature = "smart-features")]
+    {
+        let payload = serde_json::to_vec(&note).unwrap_or_default();
+        if let Err(e) = state
+            .nats_client
+            .publish("notes.updated", payload.into())
+            .await
+        {
+            tracing::error!("Failed to publish notes.updated event: {}", e);
+        } else {
+            tracing::info!("Published notes.updated event for note {}", note.id);
+        }
+    }
+
     Ok(Json(NoteResponse::from(note)))
 }
 
@@ -160,7 +190,7 @@ pub async fn delete_note(
 }
 
 /// Search notes
-/// GET /api/v1/search
+/// GET /api/v1/notes/search
 pub async fn search_notes(
     State(state): State<AppState>,
     auth: AuthSession<AuthBackend>,
@@ -197,6 +227,36 @@ pub async fn list_note_versions(
     let response: Vec<crate::dto::NoteVersionResponse> = versions
         .into_iter()
         .map(crate::dto::NoteVersionResponse::from)
+        .collect();
+
+    Ok(Json(response))
+}
+
+/// Get related notes
+/// GET /api/v1/notes/:id/related
+/// Get related notes
+/// GET /api/v1/notes/:id/related
+#[cfg(feature = "smart-features")]
+pub async fn get_related_notes(
+    State(state): State<AppState>,
+    auth: AuthSession<AuthBackend>,
+    Path(id): Path<Uuid>,
+) -> ApiResult<Json<Vec<crate::dto::NoteLinkResponse>>> {
+    let user = auth
+        .user
+        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
+            "Login required".to_string(),
+        )))?;
+    let user_id = user.id();
+
+    // Verify access to the source note
+    state.note_service.get_note(id, user_id).await?;
+
+    // Get links
+    let links = state.link_repo.get_links_for_note(id).await?;
+    let response: Vec<crate::dto::NoteLinkResponse> = links
+        .into_iter()
+        .map(crate::dto::NoteLinkResponse::from)
         .collect();
 
     Ok(Json(response))

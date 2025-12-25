@@ -43,6 +43,8 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Connecting to database: {}", config.database_url);
     let db_config = DatabaseConfig::new(&config.database_url);
 
+    #[cfg(feature = "smart-features")]
+    use notes_infra::factory::build_link_repository;
     use notes_infra::factory::{
         build_database_pool, build_note_repository, build_session_store, build_tag_repository,
         build_user_repository,
@@ -52,7 +54,6 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!(e))?;
 
     // Run migrations
-    // The factory/infra layer abstracts the database type
     if let Err(e) = run_migrations(&pool).await {
         tracing::warn!(
             "Migration error (might be expected if not implemented for this DB): {}",
@@ -73,6 +74,10 @@ async fn main() -> anyhow::Result<()> {
     let user_repo = build_user_repository(&pool)
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
+    #[cfg(feature = "smart-features")]
+    let link_repo = build_link_repository(&pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     // Create services
     use notes_domain::{NoteService, TagService, UserService};
@@ -80,14 +85,28 @@ async fn main() -> anyhow::Result<()> {
     let tag_service = Arc::new(TagService::new(tag_repo.clone()));
     let user_service = Arc::new(UserService::new(user_repo.clone()));
 
+    // Connect to NATS
+    // Connect to NATS
+    #[cfg(feature = "smart-features")]
+    let nats_client = {
+        tracing::info!("Connecting to NATS: {}", config.broker_url);
+        async_nats::connect(&config.broker_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("NATS connection failed: {}", e))?
+    };
+
     // Create application state
     let state = AppState::new(
         note_repo,
         tag_repo,
         user_repo.clone(),
+        #[cfg(feature = "smart-features")]
+        link_repo,
         note_service,
         tag_service,
         user_service,
+        #[cfg(feature = "smart-features")]
+        nats_client,
         config.clone(),
     );
 
@@ -108,10 +127,8 @@ async fn main() -> anyhow::Result<()> {
         .with_secure(false) // Set to true in production with HTTPS
         .with_expiry(Expiry::OnInactivity(Duration::seconds(60 * 60 * 24 * 7))); // 7 days
 
-    // Auth layer
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
-    // Parse CORS origins
     let mut cors = CorsLayer::new()
         .allow_methods([
             axum::http::Method::GET,
@@ -127,7 +144,6 @@ async fn main() -> anyhow::Result<()> {
         ])
         .allow_credentials(true);
 
-    // Add allowed origins
     let mut allowed_origins = Vec::new();
     for origin in &config.cors_allowed_origins {
         tracing::debug!("Allowing CORS origin: {}", origin);
@@ -142,7 +158,6 @@ async fn main() -> anyhow::Result<()> {
         cors = cors.allow_origin(allowed_origins);
     }
 
-    // Build the application
     let app = Router::new()
         .nest("/api/v1", routes::api_v1_router())
         .layer(auth_layer)
@@ -150,7 +165,6 @@ async fn main() -> anyhow::Result<()> {
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
-    // Start the server
     let addr = format!("{}:{}", config.host, config.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
 

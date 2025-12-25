@@ -11,9 +11,65 @@ pub enum FactoryError {
     Database(#[from] sqlx::Error),
     #[error("Not implemented: {0}")]
     NotImplemented(String),
+    #[error("Infrastructure error: {0}")]
+    Infrastructure(#[from] notes_domain::DomainError),
 }
 
 pub type FactoryResult<T> = Result<T, FactoryError>;
+
+#[cfg(feature = "smart-features")]
+#[derive(Debug, Clone)]
+pub enum EmbeddingProvider {
+    FastEmbed,
+    // Ollama(String), // Url
+    // OpenAI(String), // ApiKey
+}
+
+#[cfg(feature = "smart-features")]
+#[derive(Debug, Clone)]
+pub enum VectorProvider {
+    Qdrant { url: String, collection: String },
+    // InMemory,
+}
+
+#[cfg(feature = "smart-features")]
+pub async fn build_embedding_generator(
+    provider: &EmbeddingProvider,
+) -> FactoryResult<Arc<dyn notes_domain::ports::EmbeddingGenerator>> {
+    match provider {
+        EmbeddingProvider::FastEmbed => {
+            let adapter = crate::embeddings::fastembed::FastEmbedAdapter::new()?;
+            Ok(Arc::new(adapter))
+        }
+    }
+}
+
+#[cfg(feature = "smart-features")]
+pub async fn build_vector_store(
+    provider: &VectorProvider,
+) -> FactoryResult<Arc<dyn notes_domain::ports::VectorStore>> {
+    match provider {
+        VectorProvider::Qdrant { url, collection } => {
+            let adapter = crate::vector::qdrant::QdrantVectorAdapter::new(url, collection)?;
+            adapter.create_collection_if_not_exists().await?;
+            Ok(Arc::new(adapter))
+        }
+    }
+}
+
+#[cfg(feature = "sqlite")]
+pub async fn build_link_repository(
+    pool: &DatabasePool,
+) -> FactoryResult<Arc<dyn notes_domain::ports::LinkRepository>> {
+    match pool {
+        DatabasePool::Sqlite(pool) => Ok(Arc::new(
+            crate::link_repository::SqliteLinkRepository::new(pool.clone()),
+        )),
+        _ => Err(FactoryError::NotImplemented(
+            "LinkRepostiory for non-sqlite".to_string(),
+        )),
+    }
+}
 
 pub async fn build_database_pool(db_config: &DatabaseConfig) -> FactoryResult<DatabasePool> {
     if db_config.url.starts_with("sqlite:") {

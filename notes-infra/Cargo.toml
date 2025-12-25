@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["sqlite"]
+default = ["sqlite", "smart-features"]
 sqlite = ["sqlx/sqlite", "tower-sessions-sqlx-store/sqlite"]
 postgres = ["sqlx/postgres", "tower-sessions-sqlx-store/postgres"]
+smart-features = ["dep:fastembed", "dep:qdrant-client"]
 
 [dependencies]
 notes-domain = { path = "../notes-domain" }
@@ -19,3 +20,6 @@ tracing = "0.1"
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 tower-sessions = "0.14.0"
 tower-sessions-sqlx-store = { version = "0.15.0", default-features = false }
+fastembed = { version = "5.4", optional = true }
+qdrant-client = { version = "1.16", optional = true }
+serde_json = "1.0"

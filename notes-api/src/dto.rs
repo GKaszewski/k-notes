@@ -172,3 +172,23 @@ impl From<notes_domain::NoteVersion> for NoteVersionResponse {
 pub struct ConfigResponse {
     pub allow_registration: bool,
 }
+
+/// Note Link response DTO
+#[derive(Debug, Serialize)]
+pub struct NoteLinkResponse {
+    pub source_note_id: Uuid,
+    pub target_note_id: Uuid,
+    pub score: f32,
+    pub created_at: DateTime<Utc>,
+}
+
+impl From<notes_domain::entities::NoteLink> for NoteLinkResponse {
+    fn from(link: notes_domain::entities::NoteLink) -> Self {
+        Self {
+            source_note_id: link.source_note_id,
+            target_note_id: link.target_note_id,
+            score: link.score,
+            created_at: link.created_at,
+        }
+    }
+}

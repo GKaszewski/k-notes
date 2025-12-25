@@ -55,7 +55,9 @@ impl IntoResponse for ApiError {
 
                     DomainError::Unauthorized(_) => StatusCode::FORBIDDEN,
 
-                    DomainError::RepositoryError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+                    DomainError::RepositoryError(_) | DomainError::InfrastructureError(_) => {
+                        StatusCode::INTERNAL_SERVER_ERROR
+                    }
                 };
 
                 (
