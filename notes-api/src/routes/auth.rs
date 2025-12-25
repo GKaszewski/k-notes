@@ -22,6 +22,11 @@ pub async fn register(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
+    // Check if registration is allowed
+    if !state.config.allow_registration {
+        return Err(ApiError::Forbidden("Registration is disabled".to_string()));
+    }
+
     // Check if user exists
     if state
         .user_repo

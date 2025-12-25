@@ -23,6 +23,9 @@ pub enum ApiError {
 
     #[error("Internal server error")]
     Internal(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
 }
 
 /// Error response body
@@ -83,6 +86,14 @@ impl IntoResponse for ApiError {
                     },
                 )
             }
+
+            ApiError::Forbidden(msg) => (
+                StatusCode::FORBIDDEN,
+                ErrorResponse {
+                    error: "Forbidden".to_string(),
+                    details: Some(msg.clone()),
+                },
+            ),
         };
 
         (status, Json(error_response)).into_response()

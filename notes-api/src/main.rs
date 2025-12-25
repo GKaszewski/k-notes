@@ -88,6 +88,7 @@ async fn main() -> anyhow::Result<()> {
         note_service,
         tag_service,
         user_service,
+        config.clone(),
     );
 
     // Auth backend

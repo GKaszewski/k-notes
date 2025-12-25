@@ -8,6 +8,7 @@ pub struct Config {
     pub database_url: String,
     pub session_secret: String,
     pub cors_allowed_origins: Vec<String>,
+    pub allow_registration: bool,
 }
 
 impl Default for Config {
@@ -19,6 +20,7 @@ impl Default for Config {
             session_secret: "k-notes-super-secret-key-must-be-at-least-64-bytes-long!!!!"
                 .to_string(),
             cors_allowed_origins: vec!["http://localhost:5173".to_string()],
+            allow_registration: true,
         }
     }
 }
@@ -50,12 +52,17 @@ impl Config {
             .filter(|s| !s.is_empty())
             .collect();
 
+        let allow_registration = env::var("ALLOW_REGISTRATION")
+            .map(|s| s.to_lowercase() == "true")
+            .unwrap_or(true);
+
         Self {
             host,
             port,
             database_url,
             session_secret,
             cors_allowed_origins,
+            allow_registration,
         }
     }
 }

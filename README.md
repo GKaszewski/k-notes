@@ -60,7 +60,17 @@ The frontend is automatically configured to talk to the backend.
 cargo run -p notes-api
 ```
 
+
 By default, this uses the **SQLite** backend.
+
+#### Configuration
+
+The application is configured via environment variables (or `.env` file):
+
+-   `ALLOW_REGISTRATION`: Set to `false` to disable new user registration (default: `true`).
+-   `DATABASE_URL`: Connection string for the database.
+-   `SESSION_SECRET`: Secret key for session encryption.
+-   `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins.
 
 **Running with Postgres:**
 

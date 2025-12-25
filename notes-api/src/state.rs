@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::config::Config;
 use notes_domain::{
     NoteRepository, NoteService, TagRepository, TagService, UserRepository, UserService,
 };
@@ -13,6 +14,7 @@ pub struct AppState {
     pub note_service: Arc<NoteService>,
     pub tag_service: Arc<TagService>,
     pub user_service: Arc<UserService>,
+    pub config: Config,
 }
 
 impl AppState {
@@ -23,6 +25,7 @@ impl AppState {
         note_service: Arc<NoteService>,
         tag_service: Arc<TagService>,
         user_service: Arc<UserService>,
+        config: Config,
     ) -> Self {
         Self {
             note_repo,
@@ -31,6 +34,7 @@ impl AppState {
             note_service,
             tag_service,
             user_service,
+            config,
         }
     }
 }
