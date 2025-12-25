@@ -106,7 +106,7 @@ export default function DashboardPage() {
                     />
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="items-center gap-2 hidden md:flex">
                     <div className="flex items-center bg-muted/50 p-1 rounded-lg border">
                         <Button
                             variant="ghost"
