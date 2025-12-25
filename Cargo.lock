@@ -1216,6 +1216,8 @@ dependencies = [
  "sqlx",
  "thiserror 2.0.17",
  "tokio",
+ "tower-sessions",
+ "tower-sessions-sqlx-store",
  "tracing",
  "uuid",
 ]

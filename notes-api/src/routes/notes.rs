@@ -10,9 +10,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use axum_login::AuthUser;
-use notes_domain::{
-    CreateNoteRequest as DomainCreateNote, NoteService, UpdateNoteRequest as DomainUpdateNote,
-};
+use notes_domain::{CreateNoteRequest as DomainCreateNote, UpdateNoteRequest as DomainUpdateNote};
 
 use crate::auth::AuthBackend;
 use crate::dto::{CreateNoteRequest, ListNotesQuery, NoteResponse, SearchQuery, UpdateNoteRequest};
@@ -48,8 +46,7 @@ pub async fn list_notes(
         }
     }
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
-    let notes = service.list_notes(user_id, filter).await?;
+    let notes = state.note_service.list_notes(user_id, filter).await?;
     let response: Vec<NoteResponse> = notes.into_iter().map(NoteResponse::from).collect();
 
     Ok(Json(response))
@@ -74,8 +71,6 @@ pub async fn create_note(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
-
     let domain_req = DomainCreateNote {
         user_id,
         title: payload.title,
@@ -85,7 +80,7 @@ pub async fn create_note(
         is_pinned: payload.is_pinned,
     };
 
-    let note = service.create_note(domain_req).await?;
+    let note = state.note_service.create_note(domain_req).await?;
 
     Ok((StatusCode::CREATED, Json(NoteResponse::from(note))))
 }
@@ -104,9 +99,7 @@ pub async fn get_note(
         )))?;
     let user_id = user.id();
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
-
-    let note = service.get_note(id, user_id).await?;
+    let note = state.note_service.get_note(id, user_id).await?;
 
     Ok(Json(NoteResponse::from(note)))
 }
@@ -131,8 +124,6 @@ pub async fn update_note(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
-
     let domain_req = DomainUpdateNote {
         id,
         user_id,
@@ -144,7 +135,7 @@ pub async fn update_note(
         tags: payload.tags,
     };
 
-    let note = service.update_note(domain_req).await?;
+    let note = state.note_service.update_note(domain_req).await?;
 
     Ok(Json(NoteResponse::from(note)))
 }
@@ -163,9 +154,7 @@ pub async fn delete_note(
         )))?;
     let user_id = user.id();
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
-
-    service.delete_note(id, user_id).await?;
+    state.note_service.delete_note(id, user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -184,9 +173,7 @@ pub async fn search_notes(
         )))?;
     let user_id = user.id();
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
-
-    let notes = service.search_notes(user_id, &query.q).await?;
+    let notes = state.note_service.search_notes(user_id, &query.q).await?;
     let response: Vec<NoteResponse> = notes.into_iter().map(NoteResponse::from).collect();
 
     Ok(Json(response))
@@ -206,9 +193,7 @@ pub async fn list_note_versions(
         )))?;
     let user_id = user.id();
 
-    let service = NoteService::new(state.note_repo, state.tag_repo);
-
-    let versions = service.list_note_versions(id, user_id).await?;
+    let versions = state.note_service.list_note_versions(id, user_id).await?;
     let response: Vec<crate::dto::NoteVersionResponse> = versions
         .into_iter()
         .map(crate::dto::NoteVersionResponse::from)

@@ -6,7 +6,7 @@ default-run = "notes-api"
 
 [dependencies]
 notes-domain = { path = "../notes-domain" }
-notes-infra = { path = "../notes-infra" }
+notes-infra = { path = "../notes-infra", features = ["sqlite"] }
 
 # Web framework
 axum = { version = "0.8.8", features = ["macros"] }

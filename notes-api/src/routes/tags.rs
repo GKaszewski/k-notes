@@ -9,8 +9,6 @@ use axum_login::{AuthSession, AuthUser};
 use uuid::Uuid;
 use validator::Validate;
 
-use notes_domain::TagService;
-
 use crate::auth::AuthBackend;
 use crate::dto::{CreateTagRequest, RenameTagRequest, TagResponse};
 use crate::error::{ApiError, ApiResult};
@@ -29,9 +27,7 @@ pub async fn list_tags(
         )))?;
     let user_id = user.id();
 
-    let service = TagService::new(state.tag_repo);
-
-    let tags = service.list_tags(user_id).await?;
+    let tags = state.tag_service.list_tags(user_id).await?;
     let response: Vec<TagResponse> = tags.into_iter().map(TagResponse::from).collect();
 
     Ok(Json(response))
@@ -55,9 +51,7 @@ pub async fn create_tag(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
-    let service = TagService::new(state.tag_repo);
-
-    let tag = service.create_tag(user_id, &payload.name).await?;
+    let tag = state.tag_service.create_tag(user_id, &payload.name).await?;
 
     Ok((StatusCode::CREATED, Json(TagResponse::from(tag))))
 }
@@ -81,9 +75,10 @@ pub async fn rename_tag(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
-    let service = TagService::new(state.tag_repo);
-
-    let tag = service.rename_tag(id, user_id, &payload.name).await?;
+    let tag = state
+        .tag_service
+        .rename_tag(id, user_id, &payload.name)
+        .await?;
 
     Ok(Json(TagResponse::from(tag)))
 }
@@ -102,9 +97,7 @@ pub async fn delete_tag(
         )))?;
     let user_id = user.id();
 
-    let service = TagService::new(state.tag_repo);
-
-    service.delete_tag(id, user_id).await?;
+    state.tag_service.delete_tag(id, user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

@@ -1,6 +1,13 @@
 //! Database connection pool management
 
+use sqlx::Pool;
+#[cfg(feature = "postgres")]
+use sqlx::Postgres;
+#[cfg(feature = "sqlite")]
+use sqlx::Sqlite;
+#[cfg(feature = "sqlite")]
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
+#[cfg(feature = "sqlite")]
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -32,7 +39,6 @@ impl DatabaseConfig {
         }
     }
 
-    /// Create an in-memory database config (useful for testing)
     pub fn in_memory() -> Self {
         Self {
             url: "sqlite::memory:".to_string(),
@@ -43,7 +49,16 @@ impl DatabaseConfig {
     }
 }
 
+#[derive(Clone, Debug)]
+pub enum DatabasePool {
+    #[cfg(feature = "sqlite")]
+    Sqlite(Pool<Sqlite>),
+    #[cfg(feature = "postgres")]
+    Postgres(Pool<Postgres>),
+}
+
 /// Create a database connection pool
+#[cfg(feature = "sqlite")]
 pub async fn create_pool(config: &DatabaseConfig) -> Result<SqlitePool, sqlx::Error> {
     let options = SqliteConnectOptions::from_str(&config.url)?
         .create_if_missing(true)
@@ -62,8 +77,28 @@ pub async fn create_pool(config: &DatabaseConfig) -> Result<SqlitePool, sqlx::Er
 }
 
 /// Run database migrations
-pub async fn run_migrations(pool: &SqlitePool) -> Result<(), sqlx::Error> {
-    sqlx::migrate!("../migrations").run(pool).await?;
+pub async fn run_migrations(pool: &DatabasePool) -> Result<(), sqlx::Error> {
+    match pool {
+        #[cfg(feature = "sqlite")]
+        DatabasePool::Sqlite(pool) => {
+            sqlx::migrate!("../migrations").run(pool).await?;
+        }
+        #[cfg(feature = "postgres")]
+        DatabasePool::Postgres(_pool) => {
+            // Placeholder for Postgres migrations
+            // sqlx::migrate!("../migrations/postgres").run(_pool).await?;
+            tracing::warn!("Postgres migrations not yet implemented");
+            return Err(sqlx::Error::Configuration(
+                "Postgres migrations not yet implemented".into(),
+            ));
+        }
+        #[allow(unreachable_patterns)]
+        _ => {
+            return Err(sqlx::Error::Configuration(
+                "No database feature enabled".into(),
+            ));
+        }
+    }
 
     tracing::info!("Database migrations completed successfully");
     Ok(())
@@ -84,7 +119,8 @@ mod tests {
     async fn test_run_migrations() {
         let config = DatabaseConfig::in_memory();
         let pool = create_pool(&config).await.unwrap();
-        let result = run_migrations(&pool).await;
+        let db_pool = DatabasePool::Sqlite(pool);
+        let result = run_migrations(&db_pool).await;
         assert!(result.is_ok());
     }
 }

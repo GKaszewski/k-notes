@@ -133,12 +133,13 @@ impl UserRepository for SqliteUserRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::{DatabaseConfig, create_pool, run_migrations};
+    use crate::db::{DatabaseConfig, DatabasePool, create_pool, run_migrations};
 
     async fn setup_test_db() -> SqlitePool {
         let config = DatabaseConfig::in_memory();
         let pool = create_pool(&config).await.unwrap();
-        run_migrations(&pool).await.unwrap();
+        let db_pool = DatabasePool::Sqlite(pool.clone());
+        run_migrations(&db_pool).await.unwrap();
         pool
     }
 

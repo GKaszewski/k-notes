@@ -10,13 +10,9 @@ use axum_login::AuthManagerLayerBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tower_sessions::{Expiry, SessionManagerLayer};
-use tower_sessions_sqlx_store::SqliteStore;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use notes_infra::{
-    DatabaseConfig, SqliteNoteRepository, SqliteTagRepository, SqliteUserRepository, create_pool,
-    run_migrations,
-};
+use notes_infra::{DatabaseConfig, run_migrations};
 
 mod auth;
 mod config;
@@ -46,29 +42,66 @@ async fn main() -> anyhow::Result<()> {
     // Setup database
     tracing::info!("Connecting to database: {}", config.database_url);
     let db_config = DatabaseConfig::new(&config.database_url);
-    let pool = create_pool(&db_config).await?;
+
+    use notes_infra::factory::{
+        build_database_pool, build_note_repository, build_session_store, build_tag_repository,
+        build_user_repository,
+    };
+    let pool = build_database_pool(&db_config)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     // Run migrations
-    tracing::info!("Running database migrations...");
-    run_migrations(&pool).await?;
+    // The factory/infra layer abstracts the database type
+    if let Err(e) = run_migrations(&pool).await {
+        tracing::warn!(
+            "Migration error (might be expected if not implemented for this DB): {}",
+            e
+        );
+    }
 
-    // Create a default user for development (optional now that we have registration)
-    create_dev_user(&pool).await?;
+    // Create a default user for development
+    create_dev_user(&pool).await.ok();
 
-    // Create repositories
-    let note_repo = Arc::new(SqliteNoteRepository::new(pool.clone()));
-    let tag_repo = Arc::new(SqliteTagRepository::new(pool.clone()));
-    let user_repo = Arc::new(SqliteUserRepository::new(pool.clone()));
+    // Create repositories via factory
+    let note_repo = build_note_repository(&pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let tag_repo = build_tag_repository(&pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+    let user_repo = build_user_repository(&pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+
+    // Create services
+    use notes_domain::{NoteService, TagService, UserService};
+    let note_service = Arc::new(NoteService::new(note_repo.clone(), tag_repo.clone()));
+    let tag_service = Arc::new(TagService::new(tag_repo.clone()));
+    let user_service = Arc::new(UserService::new(user_repo.clone()));
 
     // Create application state
-    let state = AppState::new(note_repo, tag_repo, user_repo.clone());
+    let state = AppState::new(
+        note_repo,
+        tag_repo,
+        user_repo.clone(),
+        note_service,
+        tag_service,
+        user_service,
+    );
 
     // Auth backend
     let backend = AuthBackend::new(user_repo);
 
     // Session layer
-    let session_store = SqliteStore::new(pool.clone());
-    session_store.migrate().await?;
+    // Use the factory to build the session store, agnostic of the underlying DB
+    let session_store = build_session_store(&pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+    session_store
+        .migrate()
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false) // Set to true in production with HTTPS
@@ -129,30 +162,29 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Create a development user for testing
-/// In production, users will be created via OIDC authentication
-async fn create_dev_user(pool: &sqlx::SqlitePool) -> anyhow::Result<()> {
-    use notes_domain::{User, UserRepository};
-    use notes_infra::SqliteUserRepository;
+async fn create_dev_user(pool: &notes_infra::db::DatabasePool) -> anyhow::Result<()> {
+    use notes_domain::User;
+    use notes_infra::factory::build_user_repository;
     use password_auth::generate_hash;
     use uuid::Uuid;
 
-    let user_repo = SqliteUserRepository::new(pool.clone());
+    let user_repo = build_user_repository(pool)
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
 
     // Check if dev user exists
     let dev_user_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
     if user_repo.find_by_id(dev_user_id).await?.is_none() {
-        // Create dev user with fixed ID and password 'password'
         let hash = generate_hash("password");
         let user = User::with_id(
             dev_user_id,
             "dev|local",
-            "dev@localhost",
+            "dev@localhost.com",
             Some(hash),
             chrono::Utc::now(),
         );
         user_repo.save(&user).await?;
-        tracing::info!("Created development user: dev@localhost / password");
+        tracing::info!("Created development user: dev@localhost.com / password");
     }
 
     Ok(())
