@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ApiError } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -29,13 +30,14 @@ export default function RegisterPage() {
   const { mutate: register, isPending } = useRegister();
   const { data: config, isLoading: isConfigLoading } = useConfig();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!isConfigLoading && config?.allow_registration === false) {
-      toast.error("Registration is currently disabled");
+      toast.error(t("Registration is currently disabled"));
       navigate("/login");
     }
-  }, [config, isConfigLoading, navigate]);
+  }, [config, isConfigLoading, navigate, t]);
 
   if (isConfigLoading || config?.allow_registration === false) {
     return null; // Or a loading spinner
@@ -59,7 +61,7 @@ export default function RegisterPage() {
         if (error instanceof ApiError) {
           toast.error(error.message);
         } else {
-          toast.error("Failed to register");
+          toast.error(t("Failed to register"));
         }
       },
     });
@@ -76,9 +78,9 @@ export default function RegisterPage() {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("Create an account")}</CardTitle>
           <CardDescription>
-            Enter your email below to create your account
+            {t("Enter your email below to create your account")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -89,7 +91,7 @@ export default function RegisterPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("Email")}</FormLabel>
                     <FormControl>
                       <Input placeholder="name@example.com" {...field} />
                     </FormControl>
@@ -102,7 +104,7 @@ export default function RegisterPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{t("Password")}</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -115,7 +117,7 @@ export default function RegisterPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>{t("Confirm Password")}</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -124,16 +126,16 @@ export default function RegisterPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? "Creating account..." : "Create account"}
+                {isPending ? t("Creating account...") : t("Create account")}
               </Button>
             </form>
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Already have an account?{" "}
+            {t("Already have an account?")}{" "}
             <Link to="/login" className="font-semibold text-primary hover:underline">
-              Sign in
+              {t("Sign in")}
             </Link>
           </p>
         </CardFooter>

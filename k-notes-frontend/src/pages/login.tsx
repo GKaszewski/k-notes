@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { ApiError } from "@/lib/api";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -24,6 +25,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const { mutate: login, isPending } = useLogin();
   const { data: config } = useConfig();
+  const { t } = useTranslation();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -39,7 +41,7 @@ export default function LoginPage() {
         if (error instanceof ApiError) {
           toast.error(error.message);
         } else {
-          toast.error("Failed to login");
+          toast.error(t("Failed to login"));
         }
       },
     });
@@ -56,9 +58,9 @@ export default function LoginPage() {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("Welcome back")}</CardTitle>
           <CardDescription>
-            Enter your email to sign in to your account
+            {t("Enter your email to sign in to your account")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -69,7 +71,7 @@ export default function LoginPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("Email")}</FormLabel>
                     <FormControl>
                       <Input placeholder="name@example.com" {...field} />
                     </FormControl>
@@ -82,7 +84,7 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{t("Password")}</FormLabel>
                     <FormControl>
                       <Input type="password" {...field} />
                     </FormControl>
@@ -91,7 +93,7 @@ export default function LoginPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? "Signing in..." : "Sign in"}
+                {isPending ? t("Signing in...") : t("Sign in")}
               </Button>
             </form>
           </Form>
@@ -99,9 +101,9 @@ export default function LoginPage() {
         <CardFooter className="flex justify-center">
           {config?.allow_registration !== false && (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Don't have an account?{" "}
+              {t("Don't have an account?")}{" "}
               <Link to="/register" className="font-semibold text-primary hover:underline">
-                Sign up
+                {t("Sign up")}
               </Link>
             </p>
           )}
