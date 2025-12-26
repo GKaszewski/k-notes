@@ -6,6 +6,9 @@ import { Languages } from "lucide-react";
 const LANGUAGES = [
     { code: "en", label: "English" },
     { code: "pl", label: "Polski" },
+    { code: "es", label: "Español" },
+    { code: "de", label: "Deutsch" },
+    { code: "fr", label: "Français" },
 ];
 
 export function LanguageSwitcher() {
@@ -22,7 +25,7 @@ export function LanguageSwitcher() {
                     <Languages className="h-4 w-4" />
                     {t("Language")}
                 </Label>
-                <div className="col-span-3 flex gap-2">
+                <div className="col-span-3 flex gap-2 flex-wrap">
                     {LANGUAGES.map((lang) => (
                         <Button
                             key={lang.code}

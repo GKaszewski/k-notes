@@ -47,7 +47,13 @@
   "Pinned": "Pinned",
   "Rename": "Rename",
   "Save changes": "Save changes",
-  "Saving...": "Saving...",
+  "Saving": {
+    "": {
+      "": {
+        "": "Saving..."
+      }
+    }
+  },
   "Search your notes...": "Search your notes...",
   "Settings": "Settings",
   "Settings saved. Please refresh the page.": "Settings saved. Please refresh the page.",

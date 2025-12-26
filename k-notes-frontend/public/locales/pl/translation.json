@@ -50,13 +50,18 @@
   "Note created": "Notatka utworzona",
   "Note title": "Tytuł notatki",
   "Note updated": "Notatka zaktualizowana",
-  "Notes": "Notatki",
   "Others": "Inne",
   "Pin this note": "Przypnij tę notatkę",
   "Pinned": "Przypięte",
   "Rename": "Zmień nazwę",
   "Save changes": "Zapisz zmiany",
-  "Saving...": "Zapisywanie...",
+  "Saving": {
+    "": {
+      "": {
+        "": ""
+      }
+    }
+  },
   "Search your notes...": "Szukaj swoich notatek...",
   "Settings": "Ustawienia",
   "Settings saved. Please refresh the page.": "Ustawienia zapisane. Odśwież stronę.",
