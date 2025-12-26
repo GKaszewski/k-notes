@@ -14,6 +14,21 @@ services:
     volumes:
       - ./data:/app/data
 
+  worker:
+    build: .
+    command: ["./notes-worker"] 
+    environment:
+      - DATABASE_URL=sqlite:///app/data/notes.db
+      - BROKER_URL=nats://nats:4222
+      - QDRANT_URL=http://qdrant:6334
+      - EMBEDDING_PROVIDER=fastembed 
+    depends_on:
+      - backend
+      - nats
+      - qdrant
+    volumes:
+      - ./data:/app/data
+
   frontend:
     build: ./k-notes-frontend
     ports:

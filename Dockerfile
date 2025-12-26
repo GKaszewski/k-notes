@@ -4,7 +4,7 @@ WORKDIR /app
 COPY . .
 
 # Build the release binary
-RUN cargo build --release -p notes-api
+RUN cargo build --release -p notes-api -p notes-worker
 
 FROM debian:bookworm-slim
 
@@ -14,6 +14,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/notes-api .
+COPY --from=builder /app/target/release/notes-worker .
 
 
 # Create data directory for SQLite

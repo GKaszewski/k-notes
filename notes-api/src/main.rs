@@ -18,6 +18,8 @@ mod auth;
 mod config;
 mod dto;
 mod error;
+#[cfg(feature = "smart-features")]
+mod nats_broker;
 mod routes;
 mod state;
 
@@ -79,14 +81,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    // Create services
-    use notes_domain::{NoteService, TagService, UserService};
-    let note_service = Arc::new(NoteService::new(note_repo.clone(), tag_repo.clone()));
-    let tag_service = Arc::new(TagService::new(tag_repo.clone()));
-    let user_service = Arc::new(UserService::new(user_repo.clone()));
-
-    // Connect to NATS
-    // Connect to NATS
+    // Connect to NATS (before creating services that depend on it)
     #[cfg(feature = "smart-features")]
     let nats_client = {
         tracing::info!("Connecting to NATS: {}", config.broker_url);
@@ -94,6 +89,21 @@ async fn main() -> anyhow::Result<()> {
             .await
             .map_err(|e| anyhow::anyhow!("NATS connection failed: {}", e))?
     };
+
+    // Create services
+    use notes_domain::{NoteService, TagService, UserService};
+
+    // Build NoteService with optional MessageBroker
+    #[cfg(feature = "smart-features")]
+    let note_service = {
+        let broker = Arc::new(nats_broker::NatsMessageBroker::new(nats_client.clone()));
+        Arc::new(NoteService::new(note_repo.clone(), tag_repo.clone()).with_message_broker(broker))
+    };
+    #[cfg(not(feature = "smart-features"))]
+    let note_service = Arc::new(NoteService::new(note_repo.clone(), tag_repo.clone()));
+
+    let tag_service = Arc::new(TagService::new(tag_repo.clone()));
+    let user_service = Arc::new(UserService::new(user_repo.clone()));
 
     // Create application state
     let state = AppState::new(

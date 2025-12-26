@@ -82,20 +82,7 @@ pub async fn create_note(
 
     let note = state.note_service.create_note(domain_req).await?;
 
-    // Publish event
-    #[cfg(feature = "smart-features")]
-    {
-        let payload = serde_json::to_vec(&note).unwrap_or_default();
-        if let Err(e) = state
-            .nats_client
-            .publish("notes.updated", payload.into())
-            .await
-        {
-            tracing::error!("Failed to publish notes.updated event: {}", e);
-        } else {
-            tracing::info!("Published notes.updated event for note {}", note.id);
-        }
-    }
+    // Event publishing is now handled in NoteService via MessageBroker
 
     Ok((StatusCode::CREATED, Json(NoteResponse::from(note))))
 }
@@ -152,20 +139,7 @@ pub async fn update_note(
 
     let note = state.note_service.update_note(domain_req).await?;
 
-    // Publish event
-    #[cfg(feature = "smart-features")]
-    {
-        let payload = serde_json::to_vec(&note).unwrap_or_default();
-        if let Err(e) = state
-            .nats_client
-            .publish("notes.updated", payload.into())
-            .await
-        {
-            tracing::error!("Failed to publish notes.updated event: {}", e);
-        } else {
-            tracing::info!("Published notes.updated event for note {}", note.id);
-        }
-    }
+    // Event publishing is now handled in NoteService via MessageBroker
 
     Ok(Json(NoteResponse::from(note)))
 }

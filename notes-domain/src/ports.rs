@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::entities::NoteLink;
+use crate::entities::{Note, NoteLink};
 use crate::errors::DomainResult;
 
 /// Defines how to generate vector embeddings from text.
@@ -33,4 +33,13 @@ pub trait LinkRepository: Send + Sync {
 
     /// Get links for a specific source note.
     async fn get_links_for_note(&self, source_note_id: Uuid) -> DomainResult<Vec<NoteLink>>;
+}
+
+/// Port for publishing domain events to a message broker.
+/// Enables the Service layer to trigger background processing
+/// without coupling to a specific messaging implementation.
+#[async_trait]
+pub trait MessageBroker: Send + Sync {
+    /// Publish an event when a note is created or updated.
+    async fn publish_note_updated(&self, note: &Note) -> DomainResult<()>;
 }
