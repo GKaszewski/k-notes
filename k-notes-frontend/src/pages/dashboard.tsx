@@ -14,12 +14,13 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useTranslation } from "react-i18next";
 
 // Masonry breakpoint columns configuration
+// react-masonry-css: key = max-width, value = column count at that width and below
+// Check order: finds first key >= viewport width
 const masonryBreakpoints = {
-    default: 4,
-    1280: 4,
-    1024: 3,
-    768: 2,
-    640: 1,
+    default: 4,    // Default for very large screens
+    1280: 4,       // 1025-1280px: 4 columns (wide desktop)
+    1024: 2,       // 481-1024px: 2 columns (tablets - since sidebar is overlay)
+    480: 1,        // 0-480px: 1 column (phones)
 };
 
 export default function DashboardPage() {
@@ -93,10 +94,10 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto pb-20 md:pb-0">
+        <div className="max-w-7xl mx-auto pb-20 lg:pb-0 overflow-x-hidden">
             {/* Action Bar */}
-            <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
-                <div className="relative w-full md:w-96">
+            <div className="flex flex-col lg:flex-row gap-4 justify-between items-center mb-6">
+                <div className="relative w-full lg:w-96">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         ref={searchInputRef}
@@ -108,7 +109,7 @@ export default function DashboardPage() {
                     />
                 </div>
 
-                <div className="items-center gap-2 hidden md:flex">
+                <div className="items-center gap-2 hidden lg:flex">
                     <div className="flex items-center bg-muted/50 p-1 rounded-lg border">
                         <Button
                             variant="ghost"
@@ -130,7 +131,7 @@ export default function DashboardPage() {
                         </Button>
                     </div>
                     {!isArchive && (
-                        <div className="hidden md:block">
+                        <div className="hidden lg:block">
                             <CreateNoteDialog open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
                         </div>
                     )}
@@ -154,7 +155,7 @@ export default function DashboardPage() {
             {isLoading && (
                 <div className={clsx(
                     viewMode === "grid"
-                        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                         : "flex flex-col gap-4 max-w-3xl mx-auto"
                 )}>
                     <NoteCardSkeletonGrid count={viewMode === "list" ? 4 : 8} />
@@ -206,7 +207,7 @@ export default function DashboardPage() {
                     trigger={
                         <Button
                             size="icon"
-                            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50 hover:scale-105 transition-transform"
+                            className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg lg:hidden z-50 hover:scale-105 transition-transform"
                         >
                             <Plus className="h-6 w-6" />
                         </Button>

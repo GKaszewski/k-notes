@@ -141,7 +141,7 @@ export function NoteCard({ note }: NoteCardProps) {
               </Badge>
             ))}
           </div>
-          <div className="flex justify-end w-full gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          <div className="flex justify-end w-full gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setHistoryOpen(true); }} title={t("History")}>
               <History className="h-4 w-4" />
             </Button>

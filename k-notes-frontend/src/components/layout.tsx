@@ -34,7 +34,7 @@ export default function Layout() {
               </Button>
             </div>
           </header>
-          <div className="flex-1 p-4 md:p-6 bg-muted/10">
+          <div className="flex-1 p-4 lg:p-6 bg-muted/10">
             <Outlet />
           </div>
         </main>
