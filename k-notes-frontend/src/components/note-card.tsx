@@ -16,6 +16,7 @@ import { VersionHistoryDialog } from "./version-history-dialog";
 import { NoteViewDialog } from "./note-view-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useBulkSelection } from "@/components/bulk-selection-context";
+import { useTranslation } from "react-i18next";
 
 interface NoteCardProps {
   note: Note;
@@ -27,6 +28,7 @@ export function NoteCard({ note }: NoteCardProps) {
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
+  const { t } = useTranslation();
 
   // Bulk selection
   const { isSelected, toggleSelection, isBulkMode } = useBulkSelection();
@@ -57,7 +59,7 @@ export function NoteCard({ note }: NoteCardProps) {
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Are you sure?")) {
+    if (confirm(t("Are you sure?"))) {
       deleteNote(note.id);
     }
   }
@@ -74,7 +76,7 @@ export function NoteCard({ note }: NoteCardProps) {
     }, {
       onSuccess: () => {
         setEditing(false);
-        toast.success("Note updated");
+        toast.success(t("Note updated"));
       }
     });
   }
@@ -129,7 +131,7 @@ export function NoteCard({ note }: NoteCardProps) {
             ))}
           </div>
           <div className="flex justify-end w-full gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setHistoryOpen(true); }} title="History">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setHistoryOpen(true); }} title={t("History")}>
               <History className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
@@ -151,7 +153,7 @@ export function NoteCard({ note }: NoteCardProps) {
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Note</DialogTitle>
+            <DialogTitle>{t("Edit Note")}</DialogTitle>
           </DialogHeader>
           <NoteForm
             defaultValues={{
@@ -162,7 +164,7 @@ export function NoteCard({ note }: NoteCardProps) {
               tags: note.tags.map(t => t.name).join(", "),
             }}
             onSubmit={handleEdit}
-            submitLabel="Update"
+            submitLabel={t("Update")}
           />
         </DialogContent>
       </Dialog>

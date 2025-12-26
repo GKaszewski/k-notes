@@ -11,6 +11,7 @@ import Masonry from "react-masonry-css";
 import { NoteCardSkeletonGrid } from "@/components/note-card-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useTranslation } from "react-i18next";
 
 // Masonry breakpoint columns configuration
 const masonryBreakpoints = {
@@ -26,6 +27,7 @@ export default function DashboardPage() {
     const [searchParams] = useSearchParams();
     const isArchive = location.pathname === "/archive";
     const activeTag = searchParams.get("tag");
+    const { t } = useTranslation();
 
     // View mode state
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -99,7 +101,7 @@ export default function DashboardPage() {
                     <Input
                         ref={searchInputRef}
                         id="search-input"
-                        placeholder="Search your notes..."
+                        placeholder={t("Search your notes...")}
                         className="pl-9 w-full bg-background"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -113,7 +115,7 @@ export default function DashboardPage() {
                             size="icon"
                             className={clsx("h-8 w-8", viewMode === "grid" && "bg-background shadow-sm")}
                             onClick={() => setViewMode("grid")}
-                            title="Grid View"
+                            title={t("Grid View")}
                         >
                             <LayoutGrid className="h-4 w-4" />
                         </Button>
@@ -122,7 +124,7 @@ export default function DashboardPage() {
                             size="icon"
                             className={clsx("h-8 w-8", viewMode === "list" && "bg-background shadow-sm")}
                             onClick={() => setViewMode("list")}
-                            title="List View"
+                            title={t("List View")}
                         >
                             <List className="h-4 w-4" />
                         </Button>
@@ -140,7 +142,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 mb-4">
                     <span className="text-sm text-muted-foreground">Filtering by:</span>
                     <Badge variant="secondary" className="flex items-center gap-1">
-                        {activeTag}
+                        {t(activeTag)}
                         <Link to="/" className="ml-1 hover:text-destructive">
                             <X className="h-3 w-3" />
                         </Link>
@@ -164,12 +166,12 @@ export default function DashboardPage() {
                 <div className="text-center py-20 bg-background rounded-lg border border-dashed">
                     <div className="text-muted-foreground">
                         {searchQuery
-                            ? "No matching notes found"
+                            ? t("No matching notes found")
                             : activeTag
-                                ? `No notes with tag "${activeTag}"`
+                                ? t("No notes with tag \"${activeTag}\"")
                                 : isArchive
-                                    ? "No archived notes yet"
-                                    : "Your notes will appear here. Click + to create one."
+                                    ? t("No archived notes yet")
+                                    : t("Your notes will appear here. Click + to create one.")
                         }
                     </div>
                 </div>
@@ -180,7 +182,7 @@ export default function DashboardPage() {
                 <div className="mb-6">
                     <div className="flex items-center gap-2 mb-3 text-muted-foreground">
                         <Pin className="h-4 w-4 rotate-45" />
-                        <span className="text-sm font-medium uppercase tracking-wide">Pinned</span>
+                        <span className="text-sm font-medium uppercase tracking-wide">{t("Pinned")}</span>
                     </div>
                     {renderNotes(pinnedNotes)}
                 </div>
@@ -191,7 +193,7 @@ export default function DashboardPage() {
                 <div>
                     {pinnedNotes.length > 0 && (
                         <div className="flex items-center gap-2 mb-3 text-muted-foreground border-t pt-4">
-                            <span className="text-sm font-medium uppercase tracking-wide">Others</span>
+                            <span className="text-sm font-medium uppercase tracking-wide">{t("Others")}</span>
                         </div>
                     )}
                     {renderNotes(unpinnedNotes)}

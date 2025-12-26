@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { NoteForm } from "./note-form";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CreateNoteDialogProps {
   trigger?: React.ReactNode;
@@ -15,6 +16,7 @@ interface CreateNoteDialogProps {
 export function CreateNoteDialog({ trigger, open: controlledOpen, onOpenChange }: CreateNoteDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const { mutate: createNote, isPending } = useCreateNote();
+  const { t } = useTranslation();
 
   // Support both controlled and uncontrolled modes
   const isControlled = controlledOpen !== undefined;
@@ -29,7 +31,7 @@ export function CreateNoteDialog({ trigger, open: controlledOpen, onOpenChange }
 
     createNote({ ...data, tags }, {
       onSuccess: () => {
-        toast.success("Note created");
+        toast.success(t("Note created"));
         setOpen(false);
       },
       onError: (error: any) => {
@@ -41,7 +43,7 @@ export function CreateNoteDialog({ trigger, open: controlledOpen, onOpenChange }
   const defaultTrigger = (
     <Button>
       <Plus className="mr-2 h-4 w-4" />
-      New Note
+      {t("New Note")}
     </Button>
   );
 
@@ -59,12 +61,12 @@ export function CreateNoteDialog({ trigger, open: controlledOpen, onOpenChange }
       )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create Note</DialogTitle>
+          <DialogTitle>{t("Create Note")}</DialogTitle>
           <DialogDescription>
-            Add a new note to your collection.
+            {t("Add a new note to your collection.")}
           </DialogDescription>
         </DialogHeader>
-        <NoteForm onSubmit={onSubmit} isLoading={isPending} submitLabel="Create" />
+        <NoteForm onSubmit={onSubmit} isLoading={isPending} submitLabel={t("Create")} />
       </DialogContent>
     </Dialog>
   );

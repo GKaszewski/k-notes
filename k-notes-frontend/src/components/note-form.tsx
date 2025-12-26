@@ -8,16 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Editor } from "@/components/editor/editor";
+import { useTranslation } from "react-i18next";
 
-const noteSchema = z.object({
-  title: z.string().min(1, "Title is required").max(200, "Title too long"),
+const noteSchema = (t: any) => z.object({
+  title: z.string().min(1, t("Title is required")).max(200, t("Title too long")),
   content: z.string().optional(),
   is_pinned: z.boolean().default(false),
   tags: z.string().optional(), // Comma separated for now
   color: z.string().default("DEFAULT"),
 });
 
-type NoteFormValues = z.infer<typeof noteSchema>;
+type NoteFormValues = z.infer<ReturnType<typeof noteSchema>>;
 
 interface NoteFormProps {
   defaultValues?: Partial<NoteFormValues>;
@@ -27,8 +28,9 @@ interface NoteFormProps {
 }
 
 export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Save" }: NoteFormProps) {
+  const { t } = useTranslation();
   const form = useForm<NoteFormValues>({
-    resolver: zodResolver(noteSchema) as any,
+    resolver: zodResolver(noteSchema(t)) as any,
     defaultValues: {
       title: "",
       content: "",
@@ -47,9 +49,9 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Title</FormLabel>
+              <FormLabel>{t("Title")}</FormLabel>
               <FormControl>
-                <Input placeholder="Note title" {...field} />
+                <Input placeholder={t("Note title")} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -60,10 +62,10 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
           name="content"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Content</FormLabel>
+              <FormLabel>{t("Content")}</FormLabel>
               <FormControl>
                 <Editor
-                  placeholder="Note content... Type / for commands"
+                  placeholder={t("Note content... Type / for commands")}
                   value={field.value}
                   onChange={field.onChange}
                 />
@@ -77,9 +79,9 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
           name="tags"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tags (comma separated)</FormLabel>
+              <FormLabel>{t("Tags (comma separated)")}</FormLabel>
               <FormControl>
-                <Input placeholder="work, todo, ideas" {...field} />
+                <Input placeholder={t("work, todo, ideas")} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -91,7 +93,7 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
           name="color"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Color</FormLabel>
+              <FormLabel>{t("Color")}</FormLabel>
               <FormControl>
                 <div className="flex gap-2 flex-wrap">
                   {NOTE_COLORS.map((color) => (
@@ -125,13 +127,13 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
                 />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>Pin this note</FormLabel>
+                <FormLabel>{t("Pin this note")}</FormLabel>
               </div>
             </FormItem>
           )}
         />
         <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading ? "Saving..." : submitLabel}
+          {isLoading ? t("Saving...") : submitLabel}
         </Button>
       </form>
     </Form>

@@ -25,15 +25,16 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { useTranslation } from "react-i18next"
 
 const items = [
   {
-    title: "Notes",
+    titleKey: "Notes",
     url: "/",
     icon: Home,
   },
   {
-    title: "Archive",
+    titleKey: "Archive",
     url: "/archive",
     icon: Archive,
   },
@@ -50,12 +51,13 @@ function TagItem({ tag, isActive }: TagItemProps) {
   const { mutate: deleteTag } = useDeleteTag();
   const { mutate: renameTag } = useRenameTag();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleDelete = () => {
-    if (confirm(`Delete tag "${tag.name}"? Notes will keep their content.`)) {
+    if (confirm(t("Delete tag \"{{name}}\"? Notes will keep their content.", { name: tag.name }))) {
       deleteTag(tag.id, {
         onSuccess: () => {
-          toast.success("Tag deleted");
+          toast.success(t("Tag deleted"));
           navigate("/");
         },
         onError: (err: any) => toast.error(err.message)
@@ -67,7 +69,7 @@ function TagItem({ tag, isActive }: TagItemProps) {
     if (editName.trim() && editName.trim() !== tag.name) {
       renameTag({ id: tag.id, name: editName.trim() }, {
         onSuccess: () => {
-          toast.success("Tag renamed");
+          toast.success(t("Tag renamed"));
           setIsEditing(false);
         },
         onError: (err: any) => {
@@ -130,11 +132,11 @@ function TagItem({ tag, isActive }: TagItemProps) {
             <DropdownMenuContent align="end" className="w-32">
               <DropdownMenuItem onClick={(e) => { e.preventDefault(); setIsEditing(true); }}>
                 <Pencil className="mr-2 h-3.5 w-3.5" />
-                Rename
+                {t("Rename")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={(e) => { e.preventDefault(); handleDelete(); }} className="text-destructive focus:text-destructive">
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
-                Delete
+                {t("Delete")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -149,6 +151,7 @@ export function AppSidebar() {
   const [searchParams] = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(true);
+  const { t } = useTranslation();
 
   const { data: tags } = useTags();
   const activeTag = searchParams.get("tag");
@@ -158,24 +161,24 @@ export function AppSidebar() {
       <Sidebar collapsible="icon">
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>K-Notes</SidebarGroupLabel>
+            <SidebarGroupLabel>{t("K-Notes")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={location.pathname === item.url && !activeTag} tooltip={item.title}>
+                  <SidebarMenuItem key={item.titleKey}>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url && !activeTag} tooltip={t(item.titleKey)}>
                       <Link to={item.url}>
                         <item.icon />
-                        <span>{item.title}</span>
+                        <span>{t(item.titleKey)}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
 
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => setSettingsOpen(true)} tooltip="Settings">
+                  <SidebarMenuButton onClick={() => setSettingsOpen(true)} tooltip={t("Settings")}>
                     <Settings />
-                    <span>Settings</span>
+                    <span>{t("Settings")}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -189,7 +192,7 @@ export function AppSidebar() {
                 <CollapsibleTrigger className="flex items-center justify-between w-full cursor-pointer group/collapsible">
                   <div className="flex items-center gap-1.5">
                     <Tag className="h-3.5 w-3.5" />
-                    <span>Tags</span>
+                    <span>{t("Tags")}</span>
                   </div>
                   <ChevronRight className="h-3.5 w-3.5 transition-transform group-data-[state=open]/collapsible:rotate-90" />
                 </CollapsibleTrigger>
@@ -208,7 +211,7 @@ export function AppSidebar() {
                         ))
                       ) : (
                         <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                          No tags yet
+                          {t("No tags yet")}
                         </div>
                       )}
                     </SidebarMenu>
