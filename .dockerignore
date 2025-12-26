@@ -1,0 +1,10 @@
+target/
+node_modules/
+.git/
+.fastembed_cache/
+*.db
+*.db-shm
+*.db-wal
+k-notes-frontend/
+dist/
+.env
