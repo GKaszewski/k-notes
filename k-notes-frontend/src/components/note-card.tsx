@@ -2,7 +2,7 @@ import { type Note, useDeleteNote, useUpdateNote } from "@/hooks/use-notes";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pin, Archive, Trash2, Edit, History } from "lucide-react";
+import { Pin, Archive, Trash2, Edit, History, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -61,6 +61,17 @@ export function NoteCard({ note }: NoteCardProps) {
     e.stopPropagation();
     if (confirm(t("Are you sure?"))) {
       deleteNote(note.id);
+    }
+  }
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const textToCopy = `${note.title}\n\n${note.content}`;
+      await navigator.clipboard.writeText(textToCopy);
+      toast.success(t("Note copied to clipboard"));
+    } catch (err) {
+      toast.error(t("Failed to copy note"));
     }
   }
 
@@ -133,6 +144,9 @@ export function NoteCard({ note }: NoteCardProps) {
           <div className="flex justify-end w-full gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setHistoryOpen(true); }} title={t("History")}>
               <History className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={handleCopy} title={t("Copy note")}>
+              <Copy className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-black/5 dark:hover:bg-white/10" onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
               <Edit className="h-4 w-4" />
