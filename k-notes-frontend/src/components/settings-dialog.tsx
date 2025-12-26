@@ -1,13 +1,12 @@
-import { useRef, useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { api } from "@/lib/api";
 import { Separator } from "@/components/ui/separator";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { useApiUrl } from "@/hooks/use-api-url";
+import { useDataManagement } from "@/hooks/use-data-management";
 
 interface SettingsDialogProps {
     open: boolean;
@@ -16,64 +15,13 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onOpenChange, dataManagementEnabled }: SettingsDialogProps) {
-    const [url, setUrl] = useState("http://localhost:3000");
     const { t } = useTranslation();
-
-    useEffect(() => {
-        const stored = localStorage.getItem("k_notes_api_url");
-        if (stored) {
-            setUrl(stored);
-        }
-    }, [open]);
+    const { apiUrl, setApiUrl, saveApiUrl } = useApiUrl();
+    const { fileInputRef, exportData, importData, triggerImport } = useDataManagement();
 
     const handleSave = () => {
-        try {
-            // Basic validation
-            new URL(url);
-            // Remove trailing slash if present
-            const cleanUrl = url.replace(/\/$/, "");
-            localStorage.setItem("k_notes_api_url", cleanUrl);
-            toast.success(t("Settings saved. Please refresh the page."));
+        if (saveApiUrl(apiUrl)) {
             onOpenChange(false);
-            window.location.reload();
-        } catch (e) {
-            toast.error(t("Invalid URL"));
-        }
-    };
-
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleExport = async () => {
-        try {
-            const blob = await api.exportData();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `k-notes-backup-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            toast.success(t("Export successful"));
-        } catch (e) {
-            toast.error(t("Export failed"));
-        }
-    };
-
-    const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        try {
-            const text = await file.text();
-            const data = JSON.parse(text);
-            await api.importData(data);
-            toast.success(t("Import successful. Reloading..."));
-            onOpenChange(false);
-            window.location.reload();
-        } catch (e) {
-            console.error(e);
-            toast.error(t("Import failed"));
         }
     };
 
@@ -93,8 +41,8 @@ export function SettingsDialog({ open, onOpenChange, dataManagementEnabled }: Se
                         </Label>
                         <Input
                             id="url"
-                            value={url}
-                            onChange={(e) => setUrl(e.target.value)}
+                            value={apiUrl}
+                            onChange={(e) => setApiUrl(e.target.value)}
                             className="col-span-3"
                             placeholder="http://localhost:3000"
                         />
@@ -115,10 +63,10 @@ export function SettingsDialog({ open, onOpenChange, dataManagementEnabled }: Se
                             </p>
                         </div>
                         <div className="flex gap-4">
-                            <Button variant="outline" onClick={handleExport}>
+                            <Button variant="outline" onClick={exportData}>
                                 {t("Export Data")}
                             </Button>
-                            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                            <Button variant="outline" onClick={triggerImport}>
                                 {t("Import Data")}
                             </Button>
                             <input
@@ -126,7 +74,7 @@ export function SettingsDialog({ open, onOpenChange, dataManagementEnabled }: Se
                                 ref={fileInputRef}
                                 className="hidden"
                                 accept=".json"
-                                onChange={handleImport}
+                                onChange={importData}
                             />
                         </div>
                     </div>

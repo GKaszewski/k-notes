@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute, PublicRoute } from "@/components/auth-guard";
+import SettingsPage from "@/pages/settings";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
@@ -22,6 +23,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/archive" element={<DashboardPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Route>
 

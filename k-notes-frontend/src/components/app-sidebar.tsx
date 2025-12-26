@@ -10,7 +10,6 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useSearchParams, useNavigate } from "react-router-dom"
-import { SettingsDialog } from "@/components/settings-dialog"
 import { useState } from "react"
 import { useTags, useDeleteTag, useRenameTag } from "@/hooks/use-notes"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -149,7 +148,6 @@ function TagItem({ tag, isActive }: TagItemProps) {
 export function AppSidebar() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(true);
   const { t } = useTranslation();
 
@@ -176,9 +174,11 @@ export function AppSidebar() {
                 ))}
 
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => setSettingsOpen(true)} tooltip={t("Settings")}>
-                    <Settings />
-                    <span>{t("Settings")}</span>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/settings"} tooltip={t("Settings")}>
+                    <Link to="/settings">
+                      <Settings />
+                      <span>{t("Settings")}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -222,7 +222,6 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
       </Sidebar>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} dataManagementEnabled />
     </>
   )
 }
