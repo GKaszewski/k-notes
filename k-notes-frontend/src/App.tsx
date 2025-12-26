@@ -6,9 +6,11 @@ import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
 import Layout from "@/components/layout";
 import { useSync } from "@/lib/sync";
+import { useMobileStatusBar } from "@/hooks/use-mobile-status-bar";
 
 function App() {
   useSync();
+  useMobileStatusBar();
 
   return (
     <Routes>
