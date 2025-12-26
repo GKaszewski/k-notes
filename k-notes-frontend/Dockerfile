@@ -27,7 +27,7 @@ RUN echo '#!/bin/sh' > /docker-entrypoint.d/40-env-config.sh && \
     echo 'if [ -n "$API_URL" ]; then' >> /docker-entrypoint.d/40-env-config.sh && \
     echo '  echo "  API_URL: \"$API_URL\"," >> /usr/share/nginx/html/env-config.js' >> /docker-entrypoint.d/40-env-config.sh && \
     echo 'fi' >> /docker-entrypoint.d/40-env-config.sh && \
-    echo 'echo "};\\n" >> /usr/share/nginx/html/env-config.js' >> /docker-entrypoint.d/40-env-config.sh && \
+    echo 'echo "};" >> /usr/share/nginx/html/env-config.js' >> /docker-entrypoint.d/40-env-config.sh && \
     chmod +x /docker-entrypoint.d/40-env-config.sh
 
 EXPOSE 80
