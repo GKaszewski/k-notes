@@ -81,7 +81,7 @@ export default function DashboardPage() {
         return (
             <Masonry
                 breakpointCols={masonryBreakpoints}
-                className="flex -ml-4 w-auto"
+                className="flex w-auto"
                 columnClassName="pl-4 bg-clip-padding"
             >
                 {notesList.map((note: Note) => (

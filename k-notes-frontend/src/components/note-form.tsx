@@ -43,7 +43,7 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit as any)} className="w-full flex flex-col gap-4">
         <FormField
           control={form.control as any}
           name="title"

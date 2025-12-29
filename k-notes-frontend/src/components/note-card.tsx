@@ -165,21 +165,23 @@ export function NoteCard({ note }: NoteCardProps) {
       </Card>
 
       <Dialog open={editing} onOpenChange={setEditing}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6 gap-0 overflow-hidden">
+          <DialogHeader className="pb-4 shrink-0">
             <DialogTitle>{t("Edit Note")}</DialogTitle>
           </DialogHeader>
-          <NoteForm
-            defaultValues={{
-              title: note.title,
-              content: note.content,
-              is_pinned: note.is_pinned,
-              color: note.color,
-              tags: note.tags.map(t => t.name).join(", "),
-            }}
-            onSubmit={handleEdit}
-            submitLabel={t("Update")}
-          />
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+            <NoteForm
+              defaultValues={{
+                title: note.title,
+                content: note.content,
+                is_pinned: note.is_pinned,
+                color: note.color,
+                tags: note.tags.map(t => t.name).join(", "),
+              }}
+              onSubmit={handleEdit}
+              submitLabel={t("Update")}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

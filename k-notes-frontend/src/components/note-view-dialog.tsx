@@ -27,12 +27,9 @@ export function NoteViewDialog({ note, open, onOpenChange, onEdit, onSelectNote 
             <DialogContent className={clsx("max-w-3xl max-h-[85vh] flex flex-col p-6 gap-0 overflow-hidden", colorClass)}>
                 <DialogHeader className="pb-4 shrink-0">
                     <div className="flex justify-between items-start gap-4">
-                        <DialogTitle className="text-2xl font-bold leading-tight break-words">
+                        <DialogTitle className="text-2xl font-bold leading-tight wrap-break-word">
                             {note.title}
                         </DialogTitle>
-                        {note.is_pinned && (
-                            <Pin className="h-5 w-5 text-primary rotate-45 shrink-0" />
-                        )}
                     </div>
                     <div className="flex items-center text-sm text-muted-foreground gap-2 mt-1">
                         <Calendar className="h-3.5 w-3.5" />
@@ -41,7 +38,7 @@ export function NoteViewDialog({ note, open, onOpenChange, onEdit, onSelectNote 
                 </DialogHeader>
 
                 <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
-                    <div className="prose dark:prose-invert max-w-none text-base leading-relaxed break-words pb-6">
+                    <div className="prose dark:prose-invert max-w-none text-base leading-relaxed wrap-break-word pb-6">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
                     </div>
 
