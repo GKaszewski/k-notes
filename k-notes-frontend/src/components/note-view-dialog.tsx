@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import ReactMarkdown from "react-markdown";
 import { type Note } from "@/hooks/use-notes";
-import { Edit, Calendar, Pin } from "lucide-react";
+import { Edit, Calendar } from "lucide-react";
 import { getNoteColor } from "@/lib/constants";
 import clsx from "clsx";
 import remarkGfm from "remark-gfm";
