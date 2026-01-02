@@ -1815,15 +1815,27 @@ dependencies = [
 
 [[package]]
 name = "k-core"
-version = "0.1.5"
-source = "git+https://git.gabrielkaszewski.dev/GKaszewski/k-core#667cae596cf4e6c9c8e4cfa3bd5ee53ffb0796fb"
+version = "0.1.10"
+source = "git+https://git.gabrielkaszewski.dev/GKaszewski/k-core#7a72f5f54ad45ba82f451e90c44c0581d13194d9"
 dependencies = [
  "anyhow",
+ "async-nats",
+ "async-trait",
+ "axum 0.8.8",
  "chrono",
+ "fastembed",
+ "futures-core",
+ "futures-util",
+ "qdrant-client",
  "serde",
  "sqlx",
  "thiserror 2.0.17",
+ "time",
+ "tokio",
+ "tower 0.5.2",
+ "tower-http",
  "tower-sessions",
+ "tower-sessions-sqlx-store",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -2196,21 +2208,18 @@ dependencies = [
 name = "notes-infra"
 version = "0.1.0"
 dependencies = [
- "async-nats",
+ "anyhow",
  "async-trait",
  "chrono",
- "fastembed",
  "futures-core",
  "futures-util",
  "k-core",
  "notes-domain",
- "qdrant-client",
  "serde",
  "serde_json",
  "sqlx",
  "thiserror 2.0.17",
  "tokio",
- "tower-sessions",
  "tower-sessions-sqlx-store",
  "tracing",
  "uuid",

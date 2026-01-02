@@ -3,8 +3,8 @@ use futures_util::StreamExt;
 use notes_domain::services::SmartNoteService;
 #[cfg(feature = "smart-features")]
 use notes_infra::factory::{
-    BrokerProvider, build_database_pool, build_embedding_generator, build_link_repository,
-    build_message_broker, build_vector_store,
+    BrokerProvider, build_embedding_generator, build_link_repository, build_message_broker,
+    build_vector_store,
 };
 
 use crate::config::Config;
@@ -31,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
             .expect("Message broker required for worker");
 
         let db_config = DatabaseConfig::new(config.database_url.clone());
-        let db_pool = build_database_pool(&db_config).await?;
+        let db_pool = k_core::db::connect(&db_config).await?;
 
         // Initialize smart feature adapters
         let embedding_generator = build_embedding_generator(&config.embedding_provider).await?;

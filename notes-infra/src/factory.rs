@@ -2,9 +2,20 @@ use std::sync::Arc;
 
 #[cfg(feature = "sqlite")]
 use crate::{SqliteNoteRepository, SqliteTagRepository, SqliteUserRepository};
-use k_core::db::DatabaseConfig;
 use k_core::db::DatabasePool;
+use k_core::session::store::InfraSessionStore;
 use notes_domain::{NoteRepository, TagRepository, UserRepository};
+
+#[cfg(feature = "smart-features")]
+use crate::embeddings::fastembed::FastEmbedAdapter;
+#[cfg(feature = "smart-features")]
+use crate::vector::qdrant::QdrantVectorAdapter;
+#[cfg(feature = "smart-features")]
+use k_core::ai::{
+    embeddings::FastEmbedAdapter as CoreFastEmbed, qdrant::QdrantAdapter as CoreQdrant,
+};
+#[cfg(feature = "smart-features")]
+use k_core::broker::nats::NatsBroker;
 
 #[derive(Debug, thiserror::Error)]
 pub enum FactoryError {
@@ -16,7 +27,7 @@ pub enum FactoryError {
     Infrastructure(#[from] notes_domain::DomainError),
 }
 
-pub type FactoryResult<T> = Result<T, FactoryError>;
+pub type FactoryResult<T> = anyhow::Result<T>;
 
 #[cfg(feature = "smart-features")]
 #[derive(Debug, Clone)]
@@ -39,8 +50,8 @@ pub async fn build_embedding_generator(
 ) -> FactoryResult<Arc<dyn notes_domain::ports::EmbeddingGenerator>> {
     match provider {
         EmbeddingProvider::FastEmbed => {
-            let adapter = crate::embeddings::fastembed::FastEmbedAdapter::new()?;
-            Ok(Arc::new(adapter))
+            let core_embed = CoreFastEmbed::new()?;
+            Ok(Arc::new(FastEmbedAdapter::new(core_embed)))
         }
     }
 }
@@ -51,8 +62,9 @@ pub async fn build_vector_store(
 ) -> FactoryResult<Arc<dyn notes_domain::ports::VectorStore>> {
     match provider {
         VectorProvider::Qdrant { url, collection } => {
-            let adapter = crate::vector::qdrant::QdrantVectorAdapter::new(url, collection)?;
-            adapter.create_collection_if_not_exists().await?;
+            let core_qdrant = CoreQdrant::new(url, collection)?;
+            let adapter = QdrantVectorAdapter::new(core_qdrant);
+            adapter.init().await.map_err(|e| anyhow::anyhow!(e))?;
             Ok(Arc::new(adapter))
         }
     }
@@ -76,14 +88,9 @@ pub async fn build_message_broker(
     match provider {
         #[cfg(feature = "broker-nats")]
         BrokerProvider::Nats { url } => {
-            let broker = crate::broker::nats::NatsMessageBroker::connect(url)
-                .await
-                .map_err(|e| {
-                    FactoryError::Infrastructure(notes_domain::DomainError::RepositoryError(
-                        format!("NATS connection failed: {}", e),
-                    ))
-                })?;
-            Ok(Some(Arc::new(broker)))
+            let core_broker = NatsBroker::connect(url).await?;
+            let adapter = crate::broker::nats::NatsMessageBroker::new(core_broker);
+            Ok(Some(Arc::new(adapter)))
         }
         BrokerProvider::None => Ok(None),
     }
@@ -100,53 +107,14 @@ pub async fn build_link_repository(
     }
 }
 
-pub async fn build_database_pool(db_config: &DatabaseConfig) -> FactoryResult<DatabasePool> {
-    if db_config.url.starts_with("sqlite:") {
-        #[cfg(feature = "sqlite")]
-        {
-            let pool = sqlx::sqlite::SqlitePoolOptions::new()
-                .max_connections(5)
-                .connect(&db_config.url)
-                .await?;
-            Ok(DatabasePool::Sqlite(pool))
-        }
-        #[cfg(not(feature = "sqlite"))]
-        Err(FactoryError::NotImplemented(
-            "SQLite feature not enabled".to_string(),
-        ))
-    } else if db_config.url.starts_with("postgres:") {
-        #[cfg(feature = "postgres")]
-        {
-            let pool = sqlx::postgres::PgPoolOptions::new()
-                .max_connections(5)
-                .connect(&db_config.url)
-                .await?;
-            Ok(DatabasePool::Postgres(pool))
-        }
-        #[cfg(not(feature = "postgres"))]
-        Err(FactoryError::NotImplemented(
-            "Postgres feature not enabled".to_string(),
-        ))
-    } else {
-        Err(FactoryError::NotImplemented(format!(
-            "Unsupported database URL scheme in: {}",
-            db_config.url
-        )))
-    }
-}
-
 pub async fn build_note_repository(pool: &DatabasePool) -> FactoryResult<Arc<dyn NoteRepository>> {
     match pool {
         #[cfg(feature = "sqlite")]
         DatabasePool::Sqlite(pool) => Ok(Arc::new(SqliteNoteRepository::new(pool.clone()))),
         #[cfg(feature = "postgres")]
-        DatabasePool::Postgres(_) => Err(FactoryError::NotImplemented(
-            "Postgres NoteRepository".to_string(),
-        )),
+        DatabasePool::Postgres(_) => anyhow::bail!("Postgres NoteRepository not implemented"),
         #[allow(unreachable_patterns)]
-        _ => Err(FactoryError::NotImplemented(
-            "No database feature enabled".to_string(),
-        )),
+        _ => anyhow::bail!("No database feature enabled"),
     }
 }
 
@@ -155,13 +123,9 @@ pub async fn build_tag_repository(pool: &DatabasePool) -> FactoryResult<Arc<dyn 
         #[cfg(feature = "sqlite")]
         DatabasePool::Sqlite(pool) => Ok(Arc::new(SqliteTagRepository::new(pool.clone()))),
         #[cfg(feature = "postgres")]
-        DatabasePool::Postgres(_) => Err(FactoryError::NotImplemented(
-            "Postgres TagRepository".to_string(),
-        )),
+        DatabasePool::Postgres(_) => anyhow::bail!("Postgres TagRepository not implemented"),
         #[allow(unreachable_patterns)]
-        _ => Err(FactoryError::NotImplemented(
-            "No database feature enabled".to_string(),
-        )),
+        _ => anyhow::bail!("No database feature enabled"),
     }
 }
 
@@ -170,33 +134,21 @@ pub async fn build_user_repository(pool: &DatabasePool) -> FactoryResult<Arc<dyn
         #[cfg(feature = "sqlite")]
         DatabasePool::Sqlite(pool) => Ok(Arc::new(SqliteUserRepository::new(pool.clone()))),
         #[cfg(feature = "postgres")]
-        DatabasePool::Postgres(_) => Err(FactoryError::NotImplemented(
-            "Postgres UserRepository".to_string(),
-        )),
+        DatabasePool::Postgres(_) => anyhow::bail!("Postgres UserRepository not implemented"),
         #[allow(unreachable_patterns)]
-        _ => Err(FactoryError::NotImplemented(
-            "No database feature enabled".to_string(),
-        )),
+        _ => anyhow::bail!("No database feature enabled"),
     }
 }
 
-pub async fn build_session_store(
-    pool: &DatabasePool,
-) -> FactoryResult<crate::session_store::InfraSessionStore> {
-    match pool {
+pub async fn build_session_store(pool: &DatabasePool) -> Result<InfraSessionStore, sqlx::Error> {
+    Ok(match pool {
         #[cfg(feature = "sqlite")]
-        DatabasePool::Sqlite(pool) => {
-            let store = tower_sessions_sqlx_store::SqliteStore::new(pool.clone());
-            Ok(crate::session_store::InfraSessionStore::Sqlite(store))
+        DatabasePool::Sqlite(p) => {
+            InfraSessionStore::Sqlite(tower_sessions_sqlx_store::SqliteStore::new(p.clone()))
         }
         #[cfg(feature = "postgres")]
-        DatabasePool::Postgres(pool) => {
-            let store = tower_sessions_sqlx_store::PostgresStore::new(pool.clone());
-            Ok(crate::session_store::InfraSessionStore::Postgres(store))
+        DatabasePool::Postgres(p) => {
+            InfraSessionStore::Postgres(tower_sessions_sqlx_store::PostgresStore::new(p.clone()))
         }
-        #[allow(unreachable_patterns)]
-        _ => Err(FactoryError::NotImplemented(
-            "No database feature enabled".to_string(),
-        )),
-    }
+    })
 }

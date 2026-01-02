@@ -62,4 +62,7 @@ dotenvy = "0.15.7"
 k-core = { git = "https://git.gabrielkaszewski.dev/GKaszewski/k-core", features = [
     "logging",
     "db-sqlx",
+    "sqlite",
+    "http",
+    "auth","sessions-db"
 ] }

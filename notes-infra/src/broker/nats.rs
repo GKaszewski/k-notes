@@ -6,23 +6,16 @@ use std::pin::Pin;
 
 use async_trait::async_trait;
 use futures_util::StreamExt;
+use k_core::broker::{MessageBroker as CoreBroker, nats::NatsBroker};
 use notes_domain::{DomainError, DomainResult, MessageBroker, Note};
 
-/// NATS adapter implementing the MessageBroker port.
 pub struct NatsMessageBroker {
-    client: async_nats::Client,
+    inner: NatsBroker,
 }
 
 impl NatsMessageBroker {
-    /// Create a new NATS message broker by connecting to the given URL.
-    pub async fn connect(url: &str) -> Result<Self, async_nats::ConnectError> {
-        let client = async_nats::connect(url).await?;
-        Ok(Self { client })
-    }
-
-    /// Create a NATS message broker from an existing client.
-    pub fn from_client(client: async_nats::Client) -> Self {
-        Self { client }
+    pub fn new(broker: NatsBroker) -> Self {
+        Self { inner: broker }
     }
 }
 
@@ -33,7 +26,7 @@ impl MessageBroker for NatsMessageBroker {
             DomainError::RepositoryError(format!("Failed to serialize note: {}", e))
         })?;
 
-        self.client
+        self.inner
             .publish("notes.updated", payload.into())
             .await
             .map_err(|e| DomainError::RepositoryError(format!("Failed to publish event: {}", e)))?;
@@ -44,15 +37,14 @@ impl MessageBroker for NatsMessageBroker {
     async fn subscribe_note_updates(
         &self,
     ) -> DomainResult<Pin<Box<dyn futures_core::Stream<Item = Note> + Send>>> {
-        let subscriber = self
-            .client
-            .subscribe("notes.updated")
-            .await
-            .map_err(|e| DomainError::RepositoryError(format!("Failed to subscribe: {}", e)))?;
+        let stream =
+            self.inner.subscribe("notes.updated").await.map_err(|e| {
+                DomainError::RepositoryError(format!("Broker subscribe error: {}", e))
+            })?;
 
-        // Transform the NATS message stream into a Note stream
-        let note_stream = subscriber.filter_map(|msg| async move {
-            match serde_json::from_slice::<Note>(&msg.payload) {
+        // Map generic bytes back to Domain Note
+        let note_stream = stream.filter_map(|bytes| async move {
+            match serde_json::from_slice::<Note>(&bytes) {
                 Ok(note) => Some(note),
                 Err(e) => {
                     tracing::warn!("Failed to deserialize note from message: {}", e);

@@ -2,14 +2,16 @@
 //!
 //! A high-performance, self-hosted note-taking API following hexagonal architecture.
 
-use k_core::db::DatabasePool;
+use k_core::{
+    db::DatabasePool,
+    http::server::{ServerConfig, apply_standard_middleware},
+};
 use std::{sync::Arc, time::Duration as StdDuration};
 use time::Duration;
 
 use axum::Router;
 use axum_login::AuthManagerLayerBuilder;
-use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
+
 use tower_sessions::{Expiry, SessionManagerLayer};
 
 use notes_infra::run_migrations;
@@ -113,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // Auth backend
-    let backend = AuthBackend::new(user_repo);
+    let backend = AuthBackend::new(user_repo); // no idea what now with this
 
     // Session layer
     // Use the factory to build the session store, agnostic of the underlying DB
@@ -126,46 +128,22 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!(e))?;
 
     let session_layer = SessionManagerLayer::new(session_store)
-        .with_secure(false) // Set to true in production with HTTPS
-        .with_expiry(Expiry::OnInactivity(Duration::seconds(60 * 60 * 24 * 7))); // 7 days
+        .with_secure(false) // Set to true in prod
+        .with_expiry(Expiry::OnInactivity(Duration::days(7)));
 
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
-    let mut cors = CorsLayer::new()
-        .allow_methods([
-            axum::http::Method::GET,
-            axum::http::Method::POST,
-            axum::http::Method::PATCH,
-            axum::http::Method::DELETE,
-            axum::http::Method::OPTIONS,
-        ])
-        .allow_headers([
-            axum::http::header::AUTHORIZATION,
-            axum::http::header::ACCEPT,
-            axum::http::header::CONTENT_TYPE,
-        ])
-        .allow_credentials(true);
-
-    let mut allowed_origins = Vec::new();
-    for origin in &config.cors_allowed_origins {
-        tracing::debug!("Allowing CORS origin: {}", origin);
-        if let Ok(value) = origin.parse::<axum::http::HeaderValue>() {
-            allowed_origins.push(value);
-        } else {
-            tracing::warn!("Invalid CORS origin: {}", origin);
-        }
-    }
-
-    if !allowed_origins.is_empty() {
-        cors = cors.allow_origin(allowed_origins);
-    }
+    let server_config = ServerConfig {
+        cors_origins: config.cors_allowed_origins.clone(),
+        session_secret: Some(config.session_secret.clone()),
+    };
 
     let app = Router::new()
         .nest("/api/v1", routes::api_v1_router())
         .layer(auth_layer)
-        .layer(cors)
-        .layer(TraceLayer::new_for_http())
         .with_state(state);
+
+    let app = apply_standard_middleware(app, &server_config);
 
     let addr = format!("{}:{}", config.host, config.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
