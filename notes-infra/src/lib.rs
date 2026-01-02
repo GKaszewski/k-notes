@@ -14,6 +14,8 @@
 //! - [`db::create_pool`] - Create a database connection pool
 //! - [`db::run_migrations`] - Run database migrations
 
+#[cfg(feature = "broker-nats")]
+pub mod broker;
 pub mod db;
 #[cfg(feature = "smart-features")]
 pub mod embeddings;

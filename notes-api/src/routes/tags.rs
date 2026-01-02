@@ -9,6 +9,8 @@ use axum_login::{AuthSession, AuthUser};
 use uuid::Uuid;
 use validator::Validate;
 
+use notes_domain::TagName;
+
 use crate::auth::AuthBackend;
 use crate::dto::{CreateTagRequest, RenameTagRequest, TagResponse};
 use crate::error::{ApiError, ApiResult};
@@ -51,7 +53,11 @@ pub async fn create_tag(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
-    let tag = state.tag_service.create_tag(user_id, &payload.name).await?;
+    // Parse string to TagName at API boundary
+    let tag_name = TagName::try_from(payload.name)
+        .map_err(|e| ApiError::validation(format!("Invalid tag name: {}", e)))?;
+
+    let tag = state.tag_service.create_tag(user_id, tag_name).await?;
 
     Ok((StatusCode::CREATED, Json(TagResponse::from(tag))))
 }
@@ -75,10 +81,11 @@ pub async fn rename_tag(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
-    let tag = state
-        .tag_service
-        .rename_tag(id, user_id, &payload.name)
-        .await?;
+    // Parse string to TagName at API boundary
+    let new_name = TagName::try_from(payload.name)
+        .map_err(|e| ApiError::validation(format!("Invalid tag name: {}", e)))?;
+
+    let tag = state.tag_service.rename_tag(id, user_id, new_name).await?;
 
     Ok(Json(TagResponse::from(tag)))
 }

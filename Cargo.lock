@@ -116,42 +116,6 @@ dependencies = [
 
 [[package]]
 name = "async-nats"
-version = "0.39.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a798aab0c0203b31d67d501e5ed1f3ac6c36a329899ce47fc93c3bea53f3ae89"
-dependencies = [
- "base64 0.22.1",
- "bytes",
- "futures",
- "memchr",
- "nkeys",
- "nuid",
- "once_cell",
- "pin-project",
- "portable-atomic",
- "rand 0.8.5",
- "regex",
- "ring",
- "rustls-native-certs 0.7.3",
- "rustls-pemfile",
- "rustls-webpki 0.102.8",
- "serde",
- "serde_json",
- "serde_nanos",
- "serde_repr",
- "thiserror 1.0.69",
- "time",
- "tokio",
- "tokio-rustls",
- "tokio-util",
- "tokio-websockets",
- "tracing",
- "tryhard",
- "url",
-]
-
-[[package]]
-name = "async-nats"
 version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86dde77d8a733a9dbaf865a9eb65c72e09c88f3d14d3dd0d2aecf511920ee4fe"
@@ -2171,7 +2135,6 @@ name = "notes-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-nats 0.39.0",
  "async-trait",
  "axum 0.8.8",
  "axum-login",
@@ -2203,6 +2166,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "futures-core",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
@@ -2215,11 +2179,15 @@ dependencies = [
 name = "notes-infra"
 version = "0.1.0"
 dependencies = [
+ "async-nats",
  "async-trait",
  "chrono",
  "fastembed",
+ "futures-core",
+ "futures-util",
  "notes-domain",
  "qdrant-client",
+ "serde",
  "serde_json",
  "sqlx",
  "thiserror 2.0.17",
@@ -2235,7 +2203,6 @@ name = "notes-worker"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-nats 0.45.0",
  "async-trait",
  "bytes",
  "chrono",

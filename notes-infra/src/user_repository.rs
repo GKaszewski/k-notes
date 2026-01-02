@@ -5,7 +5,7 @@ use chrono::{DateTime, Utc};
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
-use notes_domain::{DomainError, DomainResult, User, UserRepository};
+use notes_domain::{DomainError, DomainResult, Email, User, UserRepository};
 
 /// SQLite adapter for UserRepository
 pub struct SqliteUserRepository {
@@ -43,10 +43,14 @@ impl TryFrom<UserRow> for User {
             })
             .map_err(|e| DomainError::RepositoryError(format!("Invalid datetime: {}", e)))?;
 
+        // Parse email from string - it was validated when originally stored
+        let email = Email::try_from(row.email)
+            .map_err(|e| DomainError::RepositoryError(format!("Invalid email in DB: {}", e)))?;
+
         Ok(User::with_id(
             id,
             row.subject,
-            row.email,
+            email,
             row.password_hash,
             created_at,
         ))
@@ -108,7 +112,7 @@ impl UserRepository for SqliteUserRepository {
         )
         .bind(&id)
         .bind(&user.subject)
-        .bind(&user.email)
+        .bind(user.email.as_ref()) // Use .as_ref() to get the inner &str
         .bind(&user.password_hash)
         .bind(&created_at)
         .execute(&self.pool)
@@ -148,14 +152,15 @@ mod tests {
         let pool = setup_test_db().await;
         let repo = SqliteUserRepository::new(pool);
 
-        let user = User::new("oidc|123", "test@example.com");
+        let email = Email::try_from("test@example.com").unwrap();
+        let user = User::new("oidc|123", email);
         repo.save(&user).await.unwrap();
 
         let found = repo.find_by_id(user.id).await.unwrap();
         assert!(found.is_some());
         let found = found.unwrap();
         assert_eq!(found.subject, "oidc|123");
-        assert_eq!(found.email, "test@example.com");
+        assert_eq!(found.email_str(), "test@example.com");
         assert!(found.password_hash.is_none());
     }
 
@@ -164,13 +169,14 @@ mod tests {
         let pool = setup_test_db().await;
         let repo = SqliteUserRepository::new(pool);
 
-        let user = User::new_local("local@example.com", "hashed_pw");
+        let email = Email::try_from("local@example.com").unwrap();
+        let user = User::new_local(email, "hashed_pw");
         repo.save(&user).await.unwrap();
 
         let found = repo.find_by_id(user.id).await.unwrap();
         assert!(found.is_some());
         let found = found.unwrap();
-        assert_eq!(found.email, "local@example.com");
+        assert_eq!(found.email_str(), "local@example.com");
         assert_eq!(found.password_hash, Some("hashed_pw".to_string()));
     }
 
@@ -179,7 +185,8 @@ mod tests {
         let pool = setup_test_db().await;
         let repo = SqliteUserRepository::new(pool);
 
-        let user = User::new("google|456", "user@gmail.com");
+        let email = Email::try_from("user@gmail.com").unwrap();
+        let user = User::new("google|456", email);
         repo.save(&user).await.unwrap();
 
         let found = repo.find_by_subject("google|456").await.unwrap();
@@ -192,7 +199,8 @@ mod tests {
         let pool = setup_test_db().await;
         let repo = SqliteUserRepository::new(pool);
 
-        let user = User::new("test|789", "delete@test.com");
+        let email = Email::try_from("delete@test.com").unwrap();
+        let user = User::new("test|789", email);
         repo.save(&user).await.unwrap();
         repo.delete(user.id).await.unwrap();
 

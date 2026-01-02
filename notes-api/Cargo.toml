@@ -16,7 +16,7 @@ postgres = [
     "tower-sessions-sqlx-store/postgres",
     "sqlx/postgres",
 ]
-smart-features = ["notes-infra/smart-features", "dep:async-nats"]
+smart-features = ["notes-infra/smart-features", "notes-infra/broker-nats"]
 
 [dependencies]
 notes-domain = { path = "../notes-domain" }
@@ -36,7 +36,6 @@ tower-sessions-sqlx-store = { version = "0.15", features = ["sqlite"] }
 password-auth = "1.0"
 time = "0.3"
 async-trait = "0.1.89"
-async-nats = { version = "0.39", optional = true }
 
 # Async runtime
 tokio = { version = "1.48.0", features = ["full"] }

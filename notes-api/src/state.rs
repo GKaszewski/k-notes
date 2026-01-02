@@ -16,8 +16,6 @@ pub struct AppState {
     pub note_service: Arc<NoteService>,
     pub tag_service: Arc<TagService>,
     pub user_service: Arc<UserService>,
-    #[cfg(feature = "smart-features")]
-    pub nats_client: async_nats::Client,
     pub config: Config,
 }
 
@@ -30,7 +28,6 @@ impl AppState {
         note_service: Arc<NoteService>,
         tag_service: Arc<TagService>,
         user_service: Arc<UserService>,
-        #[cfg(feature = "smart-features")] nats_client: async_nats::Client,
         config: Config,
     ) -> Self {
         Self {
@@ -42,8 +39,6 @@ impl AppState {
             note_service,
             tag_service,
             user_service,
-            #[cfg(feature = "smart-features")]
-            nats_client,
             config,
         }
     }

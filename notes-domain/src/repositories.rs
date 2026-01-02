@@ -88,6 +88,7 @@ pub trait TagRepository: Send + Sync {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use crate::value_objects::NoteTitle;
     use std::collections::HashMap;
     use std::sync::Mutex;
 
@@ -144,7 +145,7 @@ pub(crate) mod tests {
                 .values()
                 .filter(|n| n.user_id == user_id)
                 .filter(|n| {
-                    n.title.to_lowercase().contains(&query_lower)
+                    n.title_str().to_lowercase().contains(&query_lower)
                         || n.content.to_lowercase().contains(&query_lower)
                 })
                 .cloned()
@@ -171,14 +172,15 @@ pub(crate) mod tests {
     async fn test_mock_note_repository_save_and_find() {
         let repo = MockNoteRepository::new();
         let user_id = Uuid::new_v4();
-        let note = Note::new(user_id, "Test Note", "Test content");
+        let title = NoteTitle::try_from("Test Note").ok();
+        let note = Note::new(user_id, title, "Test content");
         let note_id = note.id;
 
         repo.save(&note).await.unwrap();
         let found = repo.find_by_id(note_id).await.unwrap();
 
         assert!(found.is_some());
-        assert_eq!(found.unwrap().title, "Test Note");
+        assert_eq!(found.unwrap().title_str(), "Test Note");
     }
 
     #[tokio::test]
@@ -186,11 +188,13 @@ pub(crate) mod tests {
         let repo = MockNoteRepository::new();
         let user_id = Uuid::new_v4();
 
-        let mut pinned_note = Note::new(user_id, "Pinned", "Content");
+        let title_pinned = NoteTitle::try_from("Pinned").ok();
+        let mut pinned_note = Note::new(user_id, title_pinned, "Content");
         pinned_note.is_pinned = true;
         repo.save(&pinned_note).await.unwrap();
 
-        let regular_note = Note::new(user_id, "Regular", "Content");
+        let title_regular = NoteTitle::try_from("Regular").ok();
+        let regular_note = Note::new(user_id, title_regular, "Content");
         repo.save(&regular_note).await.unwrap();
 
         let pinned_only = repo
@@ -199,7 +203,7 @@ pub(crate) mod tests {
             .unwrap();
 
         assert_eq!(pinned_only.len(), 1);
-        assert_eq!(pinned_only[0].title, "Pinned");
+        assert_eq!(pinned_only[0].title_str(), "Pinned");
     }
 
     #[tokio::test]
@@ -207,17 +211,19 @@ pub(crate) mod tests {
         let repo = MockNoteRepository::new();
         let user_id = Uuid::new_v4();
 
-        let note1 = Note::new(user_id, "Shopping List", "Buy milk and eggs");
-        let note2 = Note::new(user_id, "Meeting Notes", "Discuss project timeline");
+        let title1 = NoteTitle::try_from("Shopping List").ok();
+        let title2 = NoteTitle::try_from("Meeting Notes").ok();
+        let note1 = Note::new(user_id, title1, "Buy milk and eggs");
+        let note2 = Note::new(user_id, title2, "Discuss project timeline");
         repo.save(&note1).await.unwrap();
         repo.save(&note2).await.unwrap();
 
         let results = repo.search(user_id, "milk").await.unwrap();
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].title, "Shopping List");
+        assert_eq!(results[0].title_str(), "Shopping List");
 
         let results = repo.search(user_id, "notes").await.unwrap();
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].title, "Meeting Notes");
+        assert_eq!(results[0].title_str(), "Meeting Notes");
     }
 }

@@ -10,7 +10,10 @@ use uuid::Uuid;
 use validator::Validate;
 
 use axum_login::AuthUser;
-use notes_domain::{CreateNoteRequest as DomainCreateNote, UpdateNoteRequest as DomainUpdateNote};
+use notes_domain::{
+    CreateNoteRequest as DomainCreateNote, NoteTitle, TagName,
+    UpdateNoteRequest as DomainUpdateNote,
+};
 
 use crate::auth::AuthBackend;
 use crate::dto::{CreateNoteRequest, ListNotesQuery, NoteResponse, SearchQuery, UpdateNoteRequest};
@@ -71,11 +74,30 @@ pub async fn create_note(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
+    // Parse title into NoteTitle (optional - empty string becomes None)
+    let title: Option<NoteTitle> = if payload.title.trim().is_empty() {
+        None
+    } else {
+        Some(
+            NoteTitle::try_from(payload.title)
+                .map_err(|e| ApiError::validation(format!("Invalid title: {}", e)))?,
+        )
+    };
+
+    // Parse tags into TagName values
+    let tags: Vec<TagName> = payload
+        .tags
+        .into_iter()
+        .map(|s| {
+            TagName::try_from(s).map_err(|e| ApiError::validation(format!("Invalid tag: {}", e)))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
     let domain_req = DomainCreateNote {
         user_id,
-        title: payload.title,
+        title,
         content: payload.content,
-        tags: payload.tags,
+        tags,
         color: payload.color,
         is_pinned: payload.is_pinned,
     };
@@ -126,15 +148,40 @@ pub async fn update_note(
         .validate()
         .map_err(|e| ApiError::validation(e.to_string()))?;
 
+    // Parse optional title - Some(string) -> Some(Some(NoteTitle)) or Some(None) for empty
+    let title: Option<Option<NoteTitle>> = match payload.title {
+        Some(t) if t.trim().is_empty() => Some(None), // Set title to None
+        Some(t) => {
+            Some(Some(NoteTitle::try_from(t).map_err(|e| {
+                ApiError::validation(format!("Invalid title: {}", e))
+            })?))
+        }
+        None => None, // Don't update title
+    };
+
+    // Parse optional tags
+    let tags: Option<Vec<TagName>> = match payload.tags {
+        Some(tag_strings) => Some(
+            tag_strings
+                .into_iter()
+                .map(|s| {
+                    TagName::try_from(s)
+                        .map_err(|e| ApiError::validation(format!("Invalid tag: {}", e)))
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+        ),
+        None => None,
+    };
+
     let domain_req = DomainUpdateNote {
         id,
         user_id,
-        title: payload.title,
+        title,
         content: payload.content,
         is_pinned: payload.is_pinned,
         is_archived: payload.is_archived,
         color: payload.color,
-        tags: payload.tags,
+        tags,
     };
 
     let note = state.note_service.update_note(domain_req).await?;

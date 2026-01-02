@@ -4,7 +4,7 @@ use axum::{Json, extract::State, http::StatusCode};
 use axum_login::AuthSession;
 use validator::Validate;
 
-use notes_domain::User;
+use notes_domain::{Email, User};
 use password_auth::generate_hash;
 
 use crate::auth::{AuthBackend, AuthUser, Credentials};
@@ -43,9 +43,12 @@ pub async fn register(
     // Hash password
     let password_hash = generate_hash(&payload.password);
 
-    // Create use
-    // For local registration, we use email as subject
-    let user = User::new_local(&payload.email, &password_hash);
+    // Parse email string to Email newtype
+    let email = Email::try_from(payload.email)
+        .map_err(|e| ApiError::validation(format!("Invalid email: {}", e)))?;
+
+    // Create user - for local registration, we use email as subject
+    let user = User::new_local(email, &password_hash);
 
     state.user_repo.save(&user).await.map_err(ApiError::from)?;
 
@@ -108,7 +111,7 @@ pub async fn me(
 
     Ok(Json(crate::dto::UserResponse {
         id: user.0.id,
-        email: user.0.email.clone(),
+        email: user.0.email_str().to_string(), // Convert Email to String
         created_at: user.0.created_at,
     }))
 }

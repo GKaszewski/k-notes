@@ -5,7 +5,10 @@ use chrono::{DateTime, Utc};
 use sqlx::{FromRow, QueryBuilder, Sqlite, SqlitePool};
 use uuid::Uuid;
 
-use notes_domain::{DomainError, DomainResult, Note, NoteFilter, NoteRepository, NoteVersion, Tag};
+use notes_domain::{
+    DomainError, DomainResult, Note, NoteFilter, NoteRepository, NoteTitle, NoteVersion, Tag,
+    TagName,
+};
 
 /// SQLite adapter for NoteRepository
 pub struct SqliteNoteRepository {
@@ -23,7 +26,7 @@ impl SqliteNoteRepository {
 struct NoteRowWithTags {
     id: String,
     user_id: String,
-    title: String,
+    title: Option<String>, // Title can be NULL in the database
     content: String,
     color: String,
     is_pinned: i32,
@@ -68,7 +71,12 @@ fn parse_tags_json(tags_json: &str) -> Result<Vec<Tag>, DomainError> {
             let user_id = Uuid::parse_str(user_id_str)
                 .map_err(|e| DomainError::RepositoryError(format!("Invalid tag user_id: {}", e)))?;
 
-            Ok(Tag::with_id(id, name.to_string(), user_id))
+            // Parse TagName from stored string
+            let tag_name = TagName::try_from(name.to_string()).map_err(|e| {
+                DomainError::RepositoryError(format!("Invalid tag name in DB: {}", e))
+            })?;
+
+            Ok(Tag::with_id(id, tag_name, user_id))
         })
         .collect()
 }
@@ -84,10 +92,18 @@ impl NoteRowWithTags {
         let updated_at = parse_datetime(&self.updated_at)?;
         let tags = parse_tags_json(&self.tags_json)?;
 
+        // Parse optional title - empty string or NULL maps to None
+        let title: Option<NoteTitle> = match self.title {
+            Some(t) if !t.trim().is_empty() => Some(NoteTitle::try_from(t).map_err(|e| {
+                DomainError::RepositoryError(format!("Invalid title in DB: {}", e))
+            })?),
+            _ => None,
+        };
+
         Ok(Note {
             id,
             user_id,
-            title: self.title,
+            title,
             content: self.content,
             color: self.color,
             is_pinned: self.is_pinned != 0,
@@ -103,7 +119,7 @@ impl NoteRowWithTags {
 struct NoteVersionRow {
     id: String,
     note_id: String,
-    title: String,
+    title: Option<String>, // Title can be NULL
     content: String,
     created_at: String,
 }
@@ -126,7 +142,7 @@ impl NoteVersionRow {
         Ok(NoteVersion {
             id,
             note_id,
-            title: self.title,
+            title: self.title, // Already Option<String>
             content: self.content,
             created_at,
         })
@@ -222,6 +238,8 @@ impl NoteRepository for SqliteNoteRepository {
         let is_archived: i32 = if note.is_archived { 1 } else { 0 };
         let created_at = note.created_at.to_rfc3339();
         let updated_at = note.updated_at.to_rfc3339();
+        // Convert Option<NoteTitle> to Option<&str> for binding
+        let title_str: Option<&str> = note.title.as_ref().map(|t| t.as_ref());
 
         sqlx::query(
             r#"
@@ -238,7 +256,7 @@ impl NoteRepository for SqliteNoteRepository {
         )
         .bind(&id)
         .bind(&user_id)
-        .bind(&note.title)
+        .bind(title_str)
         .bind(&note.content)
         .bind(&note.color)
         .bind(is_pinned)

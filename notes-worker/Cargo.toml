@@ -7,11 +7,10 @@ edition = "2024"
 default = ["sqlite", "smart-features"]
 sqlite = ["notes-infra/sqlite", "sqlx/sqlite"]
 # postgres = ["notes-infra/postgres", "sqlx/postgres"]
-smart-features = ["notes-infra/smart-features"]
+smart-features = ["notes-infra/smart-features", "notes-infra/broker-nats"]
 
 [dependencies]
 anyhow = "1.0.100"
-async-nats = "0.45.0"
 notes-domain = { path = "../notes-domain" }
 notes-infra = { path = "../notes-infra", default-features = false }
 serde = { version = "1.0.228", features = ["derive"] }

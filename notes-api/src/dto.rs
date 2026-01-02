@@ -10,7 +10,7 @@ use notes_domain::{Note, Tag};
 /// Request to create a new note
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateNoteRequest {
-    #[validate(length(min = 1, max = 200, message = "Title must be 1-200 characters"))]
+    #[validate(length(max = 200, message = "Title must be at most 200 characters"))]
     pub title: String,
 
     #[serde(default)]
@@ -29,7 +29,7 @@ pub struct CreateNoteRequest {
 /// Request to update an existing note (all fields optional)
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateNoteRequest {
-    #[validate(length(min = 1, max = 200, message = "Title must be 1-200 characters"))]
+    #[validate(length(max = 200, message = "Title must be at most 200 characters"))]
     pub title: Option<String>,
 
     pub content: Option<String>,
@@ -68,7 +68,7 @@ impl From<Tag> for TagResponse {
     fn from(tag: Tag) -> Self {
         Self {
             id: tag.id,
-            name: tag.name,
+            name: tag.name.into_inner(), // Convert TagName to String
         }
     }
 }
@@ -91,7 +91,7 @@ impl From<Note> for NoteResponse {
     fn from(note: Note) -> Self {
         Self {
             id: note.id,
-            title: note.title,
+            title: note.title_str().to_string(), // Convert Option<NoteTitle> to String
             content: note.content,
             color: note.color,
             is_pinned: note.is_pinned,
@@ -160,7 +160,7 @@ impl From<notes_domain::NoteVersion> for NoteVersionResponse {
         Self {
             id: version.id,
             note_id: version.note_id,
-            title: version.title,
+            title: version.title.unwrap_or_default(), // Convert Option<String> to String
             content: version.content,
             created_at: version.created_at,
         }

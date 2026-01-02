@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use sqlx::{FromRow, SqlitePool};
 use uuid::Uuid;
 
-use notes_domain::{DomainError, DomainResult, Tag, TagRepository};
+use notes_domain::{DomainError, DomainResult, Tag, TagName, TagRepository};
 
 /// SQLite adapter for TagRepository
 pub struct SqliteTagRepository {
@@ -33,7 +33,11 @@ impl TryFrom<TagRow> for Tag {
         let user_id = Uuid::parse_str(&row.user_id)
             .map_err(|e| DomainError::RepositoryError(format!("Invalid UUID: {}", e)))?;
 
-        Ok(Tag::with_id(id, row.name, user_id))
+        // Parse TagName from stored string - was validated when originally stored
+        let name = TagName::try_from(row.name)
+            .map_err(|e| DomainError::RepositoryError(format!("Invalid tag name in DB: {}", e)))?;
+
+        Ok(Tag::with_id(id, name, user_id))
     }
 }
 
@@ -87,7 +91,7 @@ impl TagRepository for SqliteTagRepository {
             "#,
         )
         .bind(&id)
-        .bind(&tag.name)
+        .bind(tag.name.as_ref()) // Use .as_ref() to get the inner &str
         .bind(&user_id)
         .execute(&self.pool)
         .await
@@ -160,7 +164,7 @@ mod tests {
     use super::*;
     use crate::db::{DatabaseConfig, DatabasePool, create_pool, run_migrations};
     use crate::user_repository::SqliteUserRepository;
-    use notes_domain::{User, UserRepository};
+    use notes_domain::{Email, User, UserRepository};
 
     async fn setup_test_db() -> SqlitePool {
         let config = DatabaseConfig::in_memory();
@@ -172,7 +176,8 @@ mod tests {
 
     async fn create_test_user(pool: &SqlitePool) -> User {
         let user_repo = SqliteUserRepository::new(pool.clone());
-        let user = User::new("test|user", "test@example.com");
+        let email = Email::try_from("test@example.com").unwrap();
+        let user = User::new("test|user", email);
         user_repo.save(&user).await.unwrap();
         user
     }
@@ -183,12 +188,13 @@ mod tests {
         let user = create_test_user(&pool).await;
         let repo = SqliteTagRepository::new(pool);
 
-        let tag = Tag::new("work", user.id);
+        let name = TagName::try_from("work").unwrap();
+        let tag = Tag::new(name, user.id);
         repo.save(&tag).await.unwrap();
 
         let found = repo.find_by_id(tag.id).await.unwrap();
         assert!(found.is_some());
-        assert_eq!(found.unwrap().name, "work");
+        assert_eq!(found.unwrap().name_str(), "work");
     }
 
     #[tokio::test]
@@ -197,7 +203,8 @@ mod tests {
         let user = create_test_user(&pool).await;
         let repo = SqliteTagRepository::new(pool);
 
-        let tag = Tag::new("important", user.id);
+        let name = TagName::try_from("important").unwrap();
+        let tag = Tag::new(name, user.id);
         repo.save(&tag).await.unwrap();
 
         let found = repo.find_by_name(user.id, "important").await.unwrap();
@@ -211,13 +218,15 @@ mod tests {
         let user = create_test_user(&pool).await;
         let repo = SqliteTagRepository::new(pool);
 
-        repo.save(&Tag::new("alpha", user.id)).await.unwrap();
-        repo.save(&Tag::new("beta", user.id)).await.unwrap();
+        let name_alpha = TagName::try_from("alpha").unwrap();
+        let name_beta = TagName::try_from("beta").unwrap();
+        repo.save(&Tag::new(name_alpha, user.id)).await.unwrap();
+        repo.save(&Tag::new(name_beta, user.id)).await.unwrap();
 
         let tags = repo.find_by_user(user.id).await.unwrap();
         assert_eq!(tags.len(), 2);
         // Should be sorted alphabetically
-        assert_eq!(tags[0].name, "alpha");
-        assert_eq!(tags[1].name, "beta");
+        assert_eq!(tags[0].name_str(), "alpha");
+        assert_eq!(tags[1].name_str(), "beta");
     }
 }

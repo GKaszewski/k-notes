@@ -5,7 +5,8 @@ use notes_domain::services::SmartNoteService;
 use notes_infra::{
     DatabaseConfig,
     factory::{
-        build_database_pool, build_embedding_generator, build_link_repository, build_vector_store,
+        BrokerProvider, build_database_pool, build_embedding_generator, build_link_repository,
+        build_message_broker, build_vector_store,
     },
 };
 
@@ -26,10 +27,18 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config = Config::from_env();
-    let nats_client = async_nats::connect(&config.broker_url).await?;
 
     #[cfg(feature = "smart-features")]
     {
+        // Connect to message broker via factory
+        tracing::info!("Connecting to message broker: {}", config.broker_url);
+        let broker_provider = BrokerProvider::Nats {
+            url: config.broker_url.clone(),
+        };
+        let broker = build_message_broker(&broker_provider)
+            .await?
+            .expect("Message broker required for worker");
+
         let db_config = DatabaseConfig::new(config.database_url.clone());
         let db_pool = build_database_pool(&db_config).await?;
 
@@ -45,25 +54,15 @@ async fn main() -> anyhow::Result<()> {
             config.embedding_provider
         );
 
-        // Subscribe to note update events
-        let mut subscriber = nats_client.subscribe("notes.updated").await?;
+        // Subscribe to note update events via the broker's stream API
+        let mut note_stream = broker.subscribe_note_updates().await?;
         tracing::info!("Worker listening on 'notes.updated'...");
 
-        while let Some(msg) = subscriber.next().await {
-            // Parse message payload (assuming the payload IS the Note JSON)
-            let note_result: Result<notes_domain::Note, _> = serde_json::from_slice(&msg.payload);
-
-            match note_result {
-                Ok(note) => {
-                    tracing::info!("Processing smart features for note: {}", note.id);
-                    match smart_service.process_note(&note).await {
-                        Ok(_) => tracing::info!("Successfully processed note {}", note.id),
-                        Err(e) => tracing::error!("Failed to process note {}: {}", note.id, e),
-                    }
-                }
-                Err(e) => {
-                    tracing::error!("Failed to deserialize note from message: {}", e);
-                }
+        while let Some(note) = note_stream.next().await {
+            tracing::info!("Processing smart features for note: {}", note.id);
+            match smart_service.process_note(&note).await {
+                Ok(_) => tracing::info!("Successfully processed note {}", note.id),
+                Err(e) => tracing::error!("Failed to process note {}: {}", note.id, e),
             }
         }
     }

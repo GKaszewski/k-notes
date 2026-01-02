@@ -11,7 +11,7 @@ import { Editor } from "@/components/editor/editor";
 import { useTranslation } from "react-i18next";
 
 const noteSchema = (t: any) => z.object({
-  title: z.string().min(1, t("Title is required")).max(200, t("Title too long")),
+  title: z.string().min(0, t("Title too long")).max(200, t("Title too long")),
   content: z.string().optional(),
   is_pinned: z.boolean().default(false),
   tags: z.string().optional(), // Comma separated for now

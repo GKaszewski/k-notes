@@ -18,8 +18,6 @@ mod auth;
 mod config;
 mod dto;
 mod error;
-#[cfg(feature = "smart-features")]
-mod nats_broker;
 mod routes;
 mod state;
 
@@ -81,13 +79,17 @@ async fn main() -> anyhow::Result<()> {
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    // Connect to NATS (before creating services that depend on it)
+    // Connect to message broker via factory
     #[cfg(feature = "smart-features")]
-    let nats_client = {
-        tracing::info!("Connecting to NATS: {}", config.broker_url);
-        async_nats::connect(&config.broker_url)
+    let message_broker = {
+        use notes_infra::factory::{BrokerProvider, build_message_broker};
+        tracing::info!("Connecting to message broker: {}", config.broker_url);
+        let provider = BrokerProvider::Nats {
+            url: config.broker_url.clone(),
+        };
+        build_message_broker(&provider)
             .await
-            .map_err(|e| anyhow::anyhow!("NATS connection failed: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Broker connection failed: {}", e))?
     };
 
     // Create services
@@ -95,9 +97,11 @@ async fn main() -> anyhow::Result<()> {
 
     // Build NoteService with optional MessageBroker
     #[cfg(feature = "smart-features")]
-    let note_service = {
-        let broker = Arc::new(nats_broker::NatsMessageBroker::new(nats_client.clone()));
-        Arc::new(NoteService::new(note_repo.clone(), tag_repo.clone()).with_message_broker(broker))
+    let note_service = match message_broker {
+        Some(broker) => Arc::new(
+            NoteService::new(note_repo.clone(), tag_repo.clone()).with_message_broker(broker),
+        ),
+        None => Arc::new(NoteService::new(note_repo.clone(), tag_repo.clone())),
     };
     #[cfg(not(feature = "smart-features"))]
     let note_service = Arc::new(NoteService::new(note_repo.clone(), tag_repo.clone()));
@@ -115,8 +119,6 @@ async fn main() -> anyhow::Result<()> {
         note_service,
         tag_service,
         user_service,
-        #[cfg(feature = "smart-features")]
-        nats_client,
         config.clone(),
     );
 
@@ -188,7 +190,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn create_dev_user(pool: &notes_infra::db::DatabasePool) -> anyhow::Result<()> {
-    use notes_domain::User;
+    use notes_domain::{Email, User};
     use notes_infra::factory::build_user_repository;
     use password_auth::generate_hash;
     use uuid::Uuid;
@@ -201,10 +203,12 @@ async fn create_dev_user(pool: &notes_infra::db::DatabasePool) -> anyhow::Result
     let dev_user_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
     if user_repo.find_by_id(dev_user_id).await?.is_none() {
         let hash = generate_hash("password");
+        let dev_email = Email::try_from("dev@localhost.com")
+            .map_err(|e| anyhow::anyhow!("Invalid dev email: {}", e))?;
         let user = User::with_id(
             dev_user_id,
             "dev|local",
-            "dev@localhost.com",
+            dev_email,
             Some(hash),
             chrono::Utc::now(),
         );

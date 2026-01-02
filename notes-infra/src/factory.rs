@@ -57,6 +57,37 @@ pub async fn build_vector_store(
     }
 }
 
+/// Configuration for message broker providers.
+#[derive(Debug, Clone)]
+pub enum BrokerProvider {
+    /// NATS message broker (requires `broker-nats` feature).
+    #[cfg(feature = "broker-nats")]
+    Nats { url: String },
+    /// No message broker (messaging disabled).
+    None,
+}
+
+/// Build a message broker based on the provider configuration.
+/// Returns `None` if `BrokerProvider::None` is specified.
+pub async fn build_message_broker(
+    provider: &BrokerProvider,
+) -> FactoryResult<Option<Arc<dyn notes_domain::MessageBroker>>> {
+    match provider {
+        #[cfg(feature = "broker-nats")]
+        BrokerProvider::Nats { url } => {
+            let broker = crate::broker::nats::NatsMessageBroker::connect(url)
+                .await
+                .map_err(|e| {
+                    FactoryError::Infrastructure(notes_domain::DomainError::RepositoryError(
+                        format!("NATS connection failed: {}", e),
+                    ))
+                })?;
+            Ok(Some(Arc::new(broker)))
+        }
+        BrokerProvider::None => Ok(None),
+    }
+}
+
 #[cfg(feature = "sqlite")]
 pub async fn build_link_repository(
     pool: &DatabasePool,

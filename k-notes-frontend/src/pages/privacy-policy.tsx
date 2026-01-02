@@ -6,14 +6,14 @@ export default function PrivacyPolicyPage() {
     const appName = "K-Notes";
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
             <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
                 {/* Header */}
                 <div className="text-center space-y-4 mb-12">
                     <div className="flex justify-center">
                         <Shield className="h-16 w-16 text-primary" />
                     </div>
-                    <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
+                    <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-linear-gradient-to-r from-primary to-primary/60">
                         Privacy Policy
                     </h1>
                     <div className="flex items-center justify-center gap-2 text-muted-foreground">

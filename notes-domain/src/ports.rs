@@ -42,4 +42,10 @@ pub trait LinkRepository: Send + Sync {
 pub trait MessageBroker: Send + Sync {
     /// Publish an event when a note is created or updated.
     async fn publish_note_updated(&self, note: &Note) -> DomainResult<()>;
+
+    /// Subscribe to note update events.
+    /// Returns a stream of notes that have been updated.
+    async fn subscribe_note_updates(
+        &self,
+    ) -> DomainResult<std::pin::Pin<Box<dyn futures_core::Stream<Item = Note> + Send>>>;
 }

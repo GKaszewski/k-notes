@@ -7,6 +7,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::value_objects::{Email, NoteTitle, TagName};
+
 /// Maximum number of tags allowed per note (business rule)
 pub const MAX_TAGS_PER_NOTE: usize = 10;
 
@@ -20,7 +22,8 @@ pub struct User {
     /// OIDC subject identifier (unique per identity provider)
     /// For local auth, this can be the same as email
     pub subject: String,
-    pub email: String,
+    /// Validated email address
+    pub email: Email,
     /// Password hash for local authentication (Argon2 etc.)
     pub password_hash: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -28,22 +31,22 @@ pub struct User {
 
 impl User {
     /// Create a new user with the current timestamp
-    pub fn new(subject: impl Into<String>, email: impl Into<String>) -> Self {
+    pub fn new(subject: impl Into<String>, email: Email) -> Self {
         Self {
             id: Uuid::new_v4(),
             subject: subject.into(),
-            email: email.into(),
+            email,
             password_hash: None,
             created_at: Utc::now(),
         }
     }
 
     /// Create a new user with password hash
-    pub fn new_local(email: impl Into<String>, password_hash: impl Into<String>) -> Self {
-        let email = email.into();
+    pub fn new_local(email: Email, password_hash: impl Into<String>) -> Self {
+        let subject = email.as_ref().to_string();
         Self {
             id: Uuid::new_v4(),
-            subject: email.clone(), // Use email as subject for local auth
+            subject, // Use email as subject for local auth
             email,
             password_hash: Some(password_hash.into()),
             created_at: Utc::now(),
@@ -51,20 +54,26 @@ impl User {
     }
 
     /// Create a user with a specific ID (for reconstruction from storage)
+    /// This accepts raw strings for compatibility with database reads.
     pub fn with_id(
         id: Uuid,
         subject: impl Into<String>,
-        email: impl Into<String>,
+        email: Email,
         password_hash: Option<String>,
         created_at: DateTime<Utc>,
     ) -> Self {
         Self {
             id,
             subject: subject.into(),
-            email: email.into(),
+            email,
             password_hash,
             created_at,
         }
+    }
+
+    /// Get email as string reference (convenience method)
+    pub fn email_str(&self) -> &str {
+        self.email.as_ref()
     }
 }
 
@@ -74,27 +83,29 @@ impl User {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tag {
     pub id: Uuid,
-    pub name: String,
+    /// Validated tag name (1-50 chars, trimmed, lowercase)
+    pub name: TagName,
     pub user_id: Uuid,
 }
 
 impl Tag {
     /// Create a new tag for a user
-    pub fn new(name: impl Into<String>, user_id: Uuid) -> Self {
+    pub fn new(name: TagName, user_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
-            name: name.into(),
+            name,
             user_id,
         }
     }
 
     /// Create a tag with a specific ID (for reconstruction from storage)
-    pub fn with_id(id: Uuid, name: impl Into<String>, user_id: Uuid) -> Self {
-        Self {
-            id,
-            name: name.into(),
-            user_id,
-        }
+    pub fn with_id(id: Uuid, name: TagName, user_id: Uuid) -> Self {
+        Self { id, name, user_id }
+    }
+
+    /// Get name as string reference (convenience method)
+    pub fn name_str(&self) -> &str {
+        self.name.as_ref()
     }
 }
 
@@ -102,11 +113,13 @@ impl Tag {
 ///
 /// Notes support Markdown content and can be pinned or archived.
 /// Each note can have up to [`MAX_TAGS_PER_NOTE`] tags.
+/// Title is optional - users may create notes without a title.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Note {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub title: String,
+    /// Optional title (max 200 chars when present)
+    pub title: Option<NoteTitle>,
     /// Content stored as Markdown text
     pub content: String,
     /// Background color of the note (hex or name)
@@ -125,12 +138,12 @@ fn default_color() -> String {
 
 impl Note {
     /// Create a new note with the current timestamp
-    pub fn new(user_id: Uuid, title: impl Into<String>, content: impl Into<String>) -> Self {
+    pub fn new(user_id: Uuid, title: Option<NoteTitle>, content: impl Into<String>) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
             user_id,
-            title: title.into(),
+            title,
             content: content.into(),
             color: default_color(),
             is_pinned: false,
@@ -160,8 +173,8 @@ impl Note {
     }
 
     /// Update the note's title
-    pub fn set_title(&mut self, title: impl Into<String>) {
-        self.title = title.into();
+    pub fn set_title(&mut self, title: Option<NoteTitle>) {
+        self.title = title;
         self.updated_at = Utc::now();
     }
 
@@ -180,6 +193,11 @@ impl Note {
     pub fn tag_count(&self) -> usize {
         self.tags.len()
     }
+
+    /// Get title as string reference, returns empty string if None
+    pub fn title_str(&self) -> &str {
+        self.title.as_ref().map(|t| t.as_ref()).unwrap_or("")
+    }
 }
 
 /// A snapshot of a note's state at a specific point in time.
@@ -187,13 +205,14 @@ impl Note {
 pub struct NoteVersion {
     pub id: Uuid,
     pub note_id: Uuid,
-    pub title: String,
+    /// Title at the time of snapshot (stored as string for historical purposes)
+    pub title: Option<String>,
     pub content: String,
     pub created_at: DateTime<Utc>,
 }
 
 impl NoteVersion {
-    pub fn new(note_id: Uuid, title: String, content: String) -> Self {
+    pub fn new(note_id: Uuid, title: Option<String>, content: String) -> Self {
         Self {
             id: Uuid::new_v4(),
             note_id,
@@ -268,27 +287,31 @@ mod tests {
 
         #[test]
         fn test_new_user_has_unique_id() {
-            let user1 = User::new("subject1", "user1@example.com");
-            let user2 = User::new("subject2", "user2@example.com");
+            let email1 = Email::try_from("user1@example.com").unwrap();
+            let email2 = Email::try_from("user2@example.com").unwrap();
+            let user1 = User::new("subject1", email1);
+            let user2 = User::new("subject2", email2);
 
             assert_ne!(user1.id, user2.id);
         }
 
         #[test]
         fn test_new_user_sets_fields_correctly() {
-            let user = User::new("oidc|123456", "test@example.com");
+            let email = Email::try_from("test@example.com").unwrap();
+            let user = User::new("oidc|123456", email);
 
             assert_eq!(user.subject, "oidc|123456");
-            assert_eq!(user.email, "test@example.com");
+            assert_eq!(user.email_str(), "test@example.com");
             assert!(user.password_hash.is_none());
         }
 
         #[test]
         fn test_new_local_user_sets_fields_correctly() {
-            let user = User::new_local("local@example.com", "hashed_secret");
+            let email = Email::try_from("local@example.com").unwrap();
+            let user = User::new_local(email, "hashed_secret");
 
             assert_eq!(user.subject, "local@example.com");
-            assert_eq!(user.email, "local@example.com");
+            assert_eq!(user.email_str(), "local@example.com");
             assert_eq!(user.password_hash, Some("hashed_secret".to_string()));
         }
 
@@ -296,17 +319,12 @@ mod tests {
         fn test_user_with_id_preserves_all_fields() {
             let id = Uuid::new_v4();
             let created_at = Utc::now();
-            let user = User::with_id(
-                id,
-                "subject",
-                "email@test.com",
-                Some("hash".to_string()),
-                created_at,
-            );
+            let email = Email::try_from("email@test.com").unwrap();
+            let user = User::with_id(id, "subject", email, Some("hash".to_string()), created_at);
 
             assert_eq!(user.id, id);
             assert_eq!(user.subject, "subject");
-            assert_eq!(user.email, "email@test.com");
+            assert_eq!(user.email_str(), "email@test.com");
             assert_eq!(user.password_hash, Some("hash".to_string()));
             assert_eq!(user.created_at, created_at);
         }
@@ -318,8 +336,10 @@ mod tests {
         #[test]
         fn test_new_tag_has_unique_id() {
             let user_id = Uuid::new_v4();
-            let tag1 = Tag::new("work", user_id);
-            let tag2 = Tag::new("personal", user_id);
+            let name1 = TagName::try_from("work").unwrap();
+            let name2 = TagName::try_from("personal").unwrap();
+            let tag1 = Tag::new(name1, user_id);
+            let tag2 = Tag::new(name2, user_id);
 
             assert_ne!(tag1.id, tag2.id);
         }
@@ -327,20 +347,22 @@ mod tests {
         #[test]
         fn test_new_tag_associates_with_user() {
             let user_id = Uuid::new_v4();
-            let tag = Tag::new("important", user_id);
+            let name = TagName::try_from("important").unwrap();
+            let tag = Tag::new(name, user_id);
 
             assert_eq!(tag.user_id, user_id);
-            assert_eq!(tag.name, "important");
+            assert_eq!(tag.name_str(), "important");
         }
 
         #[test]
         fn test_tag_with_id_preserves_all_fields() {
             let id = Uuid::new_v4();
             let user_id = Uuid::new_v4();
-            let tag = Tag::with_id(id, "my-tag", user_id);
+            let name = TagName::try_from("my-tag").unwrap();
+            let tag = Tag::with_id(id, name, user_id);
 
             assert_eq!(tag.id, id);
-            assert_eq!(tag.name, "my-tag");
+            assert_eq!(tag.name_str(), "my-tag");
             assert_eq!(tag.user_id, user_id);
         }
     }
@@ -351,8 +373,10 @@ mod tests {
         #[test]
         fn test_new_note_has_unique_id() {
             let user_id = Uuid::new_v4();
-            let note1 = Note::new(user_id, "Title 1", "Content 1");
-            let note2 = Note::new(user_id, "Title 2", "Content 2");
+            let title1 = NoteTitle::try_from("Title 1").ok();
+            let title2 = NoteTitle::try_from("Title 2").ok();
+            let note1 = Note::new(user_id, title1, "Content 1");
+            let note2 = Note::new(user_id, title2, "Content 2");
 
             assert_ne!(note1.id, note2.id);
         }
@@ -360,10 +384,11 @@ mod tests {
         #[test]
         fn test_new_note_defaults() {
             let user_id = Uuid::new_v4();
-            let note = Note::new(user_id, "My Note", "# Hello World");
+            let title = NoteTitle::try_from("My Note").ok();
+            let note = Note::new(user_id, title, "# Hello World");
 
             assert_eq!(note.user_id, user_id);
-            assert_eq!(note.title, "My Note");
+            assert_eq!(note.title_str(), "My Note");
             assert_eq!(note.content, "# Hello World");
             assert!(!note.is_pinned);
             assert!(!note.is_archived);
@@ -371,9 +396,20 @@ mod tests {
         }
 
         #[test]
+        fn test_new_note_without_title() {
+            let user_id = Uuid::new_v4();
+            let note = Note::new(user_id, None, "Content without title");
+
+            assert!(note.title.is_none());
+            assert_eq!(note.title_str(), "");
+            assert_eq!(note.content, "Content without title");
+        }
+
+        #[test]
         fn test_note_set_pinned_updates_timestamp() {
             let user_id = Uuid::new_v4();
-            let mut note = Note::new(user_id, "Title", "Content");
+            let title = NoteTitle::try_from("Title").ok();
+            let mut note = Note::new(user_id, title, "Content");
             let original_updated_at = note.updated_at;
 
             // Small delay to ensure timestamp changes
@@ -387,7 +423,8 @@ mod tests {
         #[test]
         fn test_note_set_archived_updates_timestamp() {
             let user_id = Uuid::new_v4();
-            let mut note = Note::new(user_id, "Title", "Content");
+            let title = NoteTitle::try_from("Title").ok();
+            let mut note = Note::new(user_id, title, "Content");
             let original_updated_at = note.updated_at;
 
             std::thread::sleep(std::time::Duration::from_millis(10));
@@ -400,7 +437,8 @@ mod tests {
         #[test]
         fn test_note_can_add_tag_when_under_limit() {
             let user_id = Uuid::new_v4();
-            let note = Note::new(user_id, "Title", "Content");
+            let title = NoteTitle::try_from("Title").ok();
+            let note = Note::new(user_id, title, "Content");
 
             assert!(note.can_add_tag());
         }
@@ -408,11 +446,13 @@ mod tests {
         #[test]
         fn test_note_cannot_add_tag_when_at_limit() {
             let user_id = Uuid::new_v4();
-            let mut note = Note::new(user_id, "Title", "Content");
+            let title = NoteTitle::try_from("Title").ok();
+            let mut note = Note::new(user_id, title, "Content");
 
             // Add MAX_TAGS_PER_NOTE tags
             for i in 0..MAX_TAGS_PER_NOTE {
-                note.tags.push(Tag::new(format!("tag-{}", i), user_id));
+                let tag_name = TagName::try_from(format!("tag-{}", i)).unwrap();
+                note.tags.push(Tag::new(tag_name, user_id));
             }
 
             assert!(!note.can_add_tag());
@@ -422,20 +462,23 @@ mod tests {
         #[test]
         fn test_note_set_title_updates_timestamp() {
             let user_id = Uuid::new_v4();
-            let mut note = Note::new(user_id, "Original", "Content");
+            let title = NoteTitle::try_from("Original").ok();
+            let mut note = Note::new(user_id, title, "Content");
             let original_updated_at = note.updated_at;
 
             std::thread::sleep(std::time::Duration::from_millis(10));
-            note.set_title("Updated Title");
+            let new_title = NoteTitle::try_from("Updated Title").ok();
+            note.set_title(new_title);
 
-            assert_eq!(note.title, "Updated Title");
+            assert_eq!(note.title_str(), "Updated Title");
             assert!(note.updated_at > original_updated_at);
         }
 
         #[test]
         fn test_note_set_content_updates_timestamp() {
             let user_id = Uuid::new_v4();
-            let mut note = Note::new(user_id, "Title", "Original");
+            let title = NoteTitle::try_from("Title").ok();
+            let mut note = Note::new(user_id, title, "Original");
             let original_updated_at = note.updated_at;
 
             std::thread::sleep(std::time::Duration::from_millis(10));

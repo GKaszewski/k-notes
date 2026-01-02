@@ -1,7 +1,7 @@
 //! Domain services for K-Notes
 //!
 //! Services orchestrate business logic, enforce rules, and coordinate
-//! between repositories. They are the "use cases" of the application.
+//! between repositories. They are the \"use cases\" of the application.
 
 use std::sync::Arc;
 use uuid::Uuid;
@@ -10,14 +10,17 @@ use crate::entities::{MAX_TAGS_PER_NOTE, Note, NoteFilter, NoteVersion, Tag, Use
 use crate::errors::{DomainError, DomainResult};
 use crate::ports::MessageBroker;
 use crate::repositories::{NoteRepository, TagRepository, UserRepository};
+use crate::value_objects::{Email, NoteTitle, TagName};
 
 /// Request to create a new note
 #[derive(Debug, Clone)]
 pub struct CreateNoteRequest {
     pub user_id: Uuid,
-    pub title: String,
+    /// Title is optional - notes can have no title
+    pub title: Option<NoteTitle>,
     pub content: String,
-    pub tags: Vec<String>,
+    /// Tags are pre-validated TagName values
+    pub tags: Vec<TagName>,
     pub color: Option<String>,
     pub is_pinned: bool,
 }
@@ -27,12 +30,14 @@ pub struct CreateNoteRequest {
 pub struct UpdateNoteRequest {
     pub id: Uuid,
     pub user_id: Uuid, // For authorization check
-    pub title: Option<String>,
+    /// None means "don't change", Some(None) means "remove title", Some(Some(t)) means "set title"
+    pub title: Option<Option<NoteTitle>>,
     pub content: Option<String>,
     pub is_pinned: Option<bool>,
     pub is_archived: Option<bool>,
     pub color: Option<String>,
-    pub tags: Option<Vec<String>>,
+    /// Pre-validated TagName values
+    pub tags: Option<Vec<TagName>>,
 }
 
 /// Service for Note operations
@@ -70,10 +75,8 @@ impl NoteService {
 
     /// Create a new note with optional tags
     pub async fn create_note(&self, req: CreateNoteRequest) -> DomainResult<Note> {
-        // Validate title is not empty
-        if req.title.trim().is_empty() {
-            return Err(DomainError::validation("Title cannot be empty"));
-        }
+        // Title validation is handled by NoteTitle type - no need for runtime check
+        // Tags are pre-validated as TagName values
 
         // Validate tag count
         if req.tags.len() > MAX_TAGS_PER_NOTE {
@@ -89,7 +92,9 @@ impl NoteService {
 
         // Process tags
         for tag_name in &req.tags {
-            let tag = self.get_or_create_tag(req.user_id, tag_name).await?;
+            let tag = self
+                .get_or_create_tag(req.user_id, tag_name.clone())
+                .await?;
             note.tags.push(tag);
         }
 
@@ -124,14 +129,15 @@ impl NoteService {
         }
 
         // Create version snapshot (save current state)
-        let version = NoteVersion::new(note.id, note.title.clone(), note.content.clone());
+        let version = NoteVersion::new(
+            note.id,
+            note.title.as_ref().map(|t| t.as_ref().to_string()),
+            note.content.clone(),
+        );
         self.note_repo.save_version(&version).await?;
 
-        // Apply updates
+        // Apply updates - title is already validated via NoteTitle type
         if let Some(title) = req.title {
-            if title.trim().is_empty() {
-                return Err(DomainError::validation("Title cannot be empty"));
-            }
             note.set_title(title);
         }
 
@@ -164,7 +170,7 @@ impl NoteService {
 
             // Add new tags
             note.tags.clear();
-            for tag_name in &tag_names {
+            for tag_name in tag_names {
                 let tag = self.get_or_create_tag(note.user_id, tag_name).await?;
                 self.tag_repo.add_to_note(tag.id, note.id).await?;
                 note.tags.push(tag);
@@ -247,11 +253,9 @@ impl NoteService {
     ///
     /// Handles race conditions gracefully: if a concurrent request creates
     /// the same tag, we catch the unique constraint violation and retry the lookup.
-    async fn get_or_create_tag(&self, user_id: Uuid, name: &str) -> DomainResult<Tag> {
-        let name = name.trim().to_lowercase();
-
+    async fn get_or_create_tag(&self, user_id: Uuid, name: TagName) -> DomainResult<Tag> {
         // First, try to find existing tag
-        if let Some(tag) = self.tag_repo.find_by_name(user_id, &name).await? {
+        if let Some(tag) = self.tag_repo.find_by_name(user_id, name.as_ref()).await? {
             return Ok(tag);
         }
 
@@ -264,7 +268,7 @@ impl NoteService {
                 // Retry the lookup
                 tracing::debug!(tag_name = %name, "Tag creation race condition detected, retrying lookup");
                 self.tag_repo
-                    .find_by_name(user_id, &name)
+                    .find_by_name(user_id, name.as_ref())
                     .await?
                     .ok_or_else(|| DomainError::validation("Tag creation race condition"))
             }
@@ -283,16 +287,16 @@ impl TagService {
         Self { tag_repo }
     }
 
-    /// Create a new tag
-    pub async fn create_tag(&self, user_id: Uuid, name: &str) -> DomainResult<Tag> {
-        let name = name.trim().to_lowercase();
-        if name.is_empty() {
-            return Err(DomainError::validation("Tag name cannot be empty"));
-        }
-
+    /// Create a new tag (TagName is pre-validated)
+    pub async fn create_tag(&self, user_id: Uuid, name: TagName) -> DomainResult<Tag> {
         // Check if tag already exists
-        if self.tag_repo.find_by_name(user_id, &name).await?.is_some() {
-            return Err(DomainError::TagAlreadyExists(name));
+        if self
+            .tag_repo
+            .find_by_name(user_id, name.as_ref())
+            .await?
+            .is_some()
+        {
+            return Err(DomainError::TagAlreadyExists(name.into_inner()));
         }
 
         let tag = Tag::new(name, user_id);
@@ -322,13 +326,13 @@ impl TagService {
         self.tag_repo.delete(id).await
     }
 
-    /// Rename a tag
-    pub async fn rename_tag(&self, id: Uuid, user_id: Uuid, new_name: &str) -> DomainResult<Tag> {
-        let new_name = new_name.trim().to_lowercase();
-        if new_name.is_empty() {
-            return Err(DomainError::validation("Tag name cannot be empty"));
-        }
-
+    /// Rename a tag (new_name is pre-validated TagName)
+    pub async fn rename_tag(
+        &self,
+        id: Uuid,
+        user_id: Uuid,
+        new_name: TagName,
+    ) -> DomainResult<Tag> {
         // Find the existing tag
         let mut tag = self
             .tag_repo
@@ -344,9 +348,13 @@ impl TagService {
         }
 
         // Check if new name already exists (and it's not the same tag)
-        if let Some(existing) = self.tag_repo.find_by_name(user_id, &new_name).await? {
+        if let Some(existing) = self
+            .tag_repo
+            .find_by_name(user_id, new_name.as_ref())
+            .await?
+        {
             if existing.id != id {
-                return Err(DomainError::TagAlreadyExists(new_name));
+                return Err(DomainError::TagAlreadyExists(new_name.into_inner()));
             }
         }
 
@@ -372,7 +380,7 @@ impl UserService {
     pub async fn find_or_create_by_subject(
         &self,
         subject: &str,
-        email: &str,
+        email: Email,
     ) -> DomainResult<User> {
         if let Some(user) = self.user_repo.find_by_subject(subject).await? {
             Ok(user)
@@ -505,7 +513,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .values()
-                .find(|t| t.user_id == user_id && t.name == name)
+                .find(|t| t.user_id == user_id && t.name.as_ref() == name)
                 .cloned())
         }
 
@@ -574,7 +582,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .values()
-                .find(|u| u.email == email)
+                .find(|u| u.email_str() == email)
                 .cloned())
         }
 
@@ -603,9 +611,10 @@ mod tests {
         async fn test_create_note_success() {
             let (service, user_id) = create_note_service();
 
+            let title = NoteTitle::try_from("My Note").ok();
             let req = CreateNoteRequest {
                 user_id,
-                title: "My Note".to_string(),
+                title,
                 content: "# Hello World".to_string(),
                 tags: vec![],
                 color: None,
@@ -614,7 +623,7 @@ mod tests {
 
             let note = service.create_note(req).await.unwrap();
 
-            assert_eq!(note.title, "My Note");
+            assert_eq!(note.title_str(), "My Note");
             assert_eq!(note.content, "# Hello World");
             assert_eq!(note.user_id, user_id);
             assert_eq!(note.color, "DEFAULT");
@@ -622,14 +631,39 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn test_create_note_with_tags() {
+        async fn test_create_note_without_title() {
             let (service, user_id) = create_note_service();
 
             let req = CreateNoteRequest {
                 user_id,
-                title: "Tagged Note".to_string(),
+                title: None,
+                content: "Content without title".to_string(),
+                tags: vec![],
+                color: None,
+                is_pinned: false,
+            };
+
+            let note = service.create_note(req).await.unwrap();
+
+            assert!(note.title.is_none());
+            assert_eq!(note.title_str(), "");
+            assert_eq!(note.content, "Content without title");
+        }
+
+        #[tokio::test]
+        async fn test_create_note_with_tags() {
+            let (service, user_id) = create_note_service();
+
+            let title = NoteTitle::try_from("Tagged Note").ok();
+            let tags = vec![
+                TagName::try_from("work").unwrap(),
+                TagName::try_from("important").unwrap(),
+            ];
+            let req = CreateNoteRequest {
+                user_id,
+                title,
                 content: "Content".to_string(),
-                tags: vec!["work".to_string(), "important".to_string()],
+                tags,
                 color: None,
                 is_pinned: false,
             };
@@ -637,38 +671,22 @@ mod tests {
             let note = service.create_note(req).await.unwrap();
 
             assert_eq!(note.tags.len(), 2);
-            assert!(note.tags.iter().any(|t| t.name == "work"));
-            assert!(note.tags.iter().any(|t| t.name == "important"));
-        }
-
-        #[tokio::test]
-        async fn test_create_note_empty_title_fails() {
-            let (service, user_id) = create_note_service();
-
-            let req = CreateNoteRequest {
-                user_id,
-                title: "   ".to_string(), // Whitespace only
-                content: "Content".to_string(),
-                tags: vec![],
-                color: None,
-                is_pinned: false,
-            };
-
-            let result = service.create_note(req).await;
-            assert!(matches!(result, Err(DomainError::ValidationError(_))));
+            assert!(note.tags.iter().any(|t| t.name_str() == "work"));
+            assert!(note.tags.iter().any(|t| t.name_str() == "important"));
         }
 
         #[tokio::test]
         async fn test_create_note_too_many_tags_fails() {
             let (service, user_id) = create_note_service();
 
-            let tags: Vec<String> = (0..=MAX_TAGS_PER_NOTE)
-                .map(|i| format!("tag-{}", i))
+            let tags: Vec<TagName> = (0..=MAX_TAGS_PER_NOTE)
+                .map(|i| TagName::try_from(format!("tag-{}", i)).unwrap())
                 .collect();
 
+            let title = NoteTitle::try_from("Note").ok();
             let req = CreateNoteRequest {
                 user_id,
-                title: "Note".to_string(),
+                title,
                 content: "Content".to_string(),
                 tags,
                 color: None,
@@ -684,9 +702,10 @@ mod tests {
             let (service, user_id) = create_note_service();
 
             // Create a note first
+            let title = NoteTitle::try_from("Original").ok();
             let create_req = CreateNoteRequest {
                 user_id,
-                title: "Original".to_string(),
+                title,
                 content: "Original content".to_string(),
                 tags: vec![],
                 color: None,
@@ -695,10 +714,11 @@ mod tests {
             let note = service.create_note(create_req).await.unwrap();
 
             // Update it
+            let new_title = NoteTitle::try_from("Updated").ok();
             let update_req = UpdateNoteRequest {
                 id: note.id,
                 user_id,
-                title: Some("Updated".to_string()),
+                title: Some(new_title),
                 content: None,
                 is_pinned: Some(true),
                 is_archived: None,
@@ -707,7 +727,7 @@ mod tests {
             };
             let updated = service.update_note(update_req).await.unwrap();
 
-            assert_eq!(updated.title, "Updated");
+            assert_eq!(updated.title_str(), "Updated");
             assert_eq!(updated.content, "Original content"); // Unchanged
             assert!(updated.is_pinned);
             assert_eq!(updated.color, "red");
@@ -719,9 +739,10 @@ mod tests {
             let other_user = Uuid::new_v4();
 
             // Create a note
+            let title = NoteTitle::try_from("My Note").ok();
             let create_req = CreateNoteRequest {
                 user_id,
-                title: "My Note".to_string(),
+                title,
                 content: "Content".to_string(),
                 tags: vec![],
                 color: None,
@@ -730,10 +751,11 @@ mod tests {
             let note = service.create_note(create_req).await.unwrap();
 
             // Try to update with different user
+            let new_title = NoteTitle::try_from("Hacked").ok();
             let update_req = UpdateNoteRequest {
                 id: note.id,
                 user_id: other_user,
-                title: Some("Hacked".to_string()),
+                title: Some(new_title),
                 content: None,
                 is_pinned: None,
                 is_archived: None,
@@ -749,9 +771,10 @@ mod tests {
         async fn test_delete_note_success() {
             let (service, user_id) = create_note_service();
 
+            let title = NoteTitle::try_from("To Delete").ok();
             let create_req = CreateNoteRequest {
                 user_id,
-                title: "To Delete".to_string(),
+                title,
                 content: "Content".to_string(),
                 tags: vec![],
                 color: None,
@@ -772,14 +795,16 @@ mod tests {
             let results = service.search_notes(user_id, "   ").await.unwrap();
             assert!(results.is_empty());
         }
+
         #[tokio::test]
         async fn test_update_note_creates_version() {
             let (service, user_id) = create_note_service();
 
             // Create original note
+            let title = NoteTitle::try_from("Original Title").ok();
             let create_req = CreateNoteRequest {
                 user_id,
-                title: "Original Title".to_string(),
+                title,
                 content: "Original Content".to_string(),
                 tags: vec![],
                 color: None,
@@ -788,10 +813,11 @@ mod tests {
             let note = service.create_note(create_req).await.unwrap();
 
             // Update the note
+            let new_title = NoteTitle::try_from("New Title").ok();
             let update_req = UpdateNoteRequest {
                 id: note.id,
                 user_id,
-                title: Some("New Title".to_string()),
+                title: Some(new_title),
                 content: Some("New Content".to_string()),
                 is_pinned: None,
                 is_archived: None,
@@ -809,7 +835,7 @@ mod tests {
 
             assert_eq!(versions.len(), 1);
             let version = &versions[0];
-            assert_eq!(version.title, "Original Title");
+            assert_eq!(version.title, Some("Original Title".to_string()));
             assert_eq!(version.content, "Original Content");
             assert_eq!(version.note_id, note.id);
         }
@@ -828,26 +854,22 @@ mod tests {
         async fn test_create_tag_success() {
             let (service, user_id) = create_tag_service();
 
-            let tag = service.create_tag(user_id, "Work").await.unwrap();
+            let name = TagName::try_from("Work").unwrap();
+            let tag = service.create_tag(user_id, name).await.unwrap();
 
-            assert_eq!(tag.name, "work"); // Lowercase
+            assert_eq!(tag.name_str(), "work"); // Lowercase
             assert_eq!(tag.user_id, user_id);
-        }
-
-        #[tokio::test]
-        async fn test_create_tag_empty_fails() {
-            let (service, user_id) = create_tag_service();
-
-            let result = service.create_tag(user_id, "   ").await;
-            assert!(matches!(result, Err(DomainError::ValidationError(_))));
         }
 
         #[tokio::test]
         async fn test_create_duplicate_tag_fails() {
             let (service, user_id) = create_tag_service();
 
-            service.create_tag(user_id, "work").await.unwrap();
-            let result = service.create_tag(user_id, "WORK").await; // Case-insensitive
+            let name1 = TagName::try_from("work").unwrap();
+            service.create_tag(user_id, name1).await.unwrap();
+
+            let name2 = TagName::try_from("WORK").unwrap(); // Case-insensitive
+            let result = service.create_tag(user_id, name2).await;
 
             assert!(matches!(result, Err(DomainError::TagAlreadyExists(_))));
         }
@@ -865,26 +887,29 @@ mod tests {
         async fn test_find_or_create_creates_new_user() {
             let service = create_user_service();
 
+            let email = Email::try_from("test@example.com").unwrap();
             let user = service
-                .find_or_create_by_subject("oidc|123", "test@example.com")
+                .find_or_create_by_subject("oidc|123", email)
                 .await
                 .unwrap();
 
             assert_eq!(user.subject, "oidc|123");
-            assert_eq!(user.email, "test@example.com");
+            assert_eq!(user.email_str(), "test@example.com");
         }
 
         #[tokio::test]
         async fn test_find_or_create_returns_existing_user() {
             let service = create_user_service();
 
+            let email1 = Email::try_from("test@example.com").unwrap();
             let user1 = service
-                .find_or_create_by_subject("oidc|123", "test@example.com")
+                .find_or_create_by_subject("oidc|123", email1)
                 .await
                 .unwrap();
 
+            let email2 = Email::try_from("test@example.com").unwrap();
             let user2 = service
-                .find_or_create_by_subject("oidc|123", "test@example.com")
+                .find_or_create_by_subject("oidc|123", email2)
                 .await
                 .unwrap();
 
