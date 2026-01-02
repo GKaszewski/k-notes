@@ -2,35 +2,26 @@ use futures_util::StreamExt;
 #[cfg(feature = "smart-features")]
 use notes_domain::services::SmartNoteService;
 #[cfg(feature = "smart-features")]
-use notes_infra::{
-    DatabaseConfig,
-    factory::{
-        BrokerProvider, build_database_pool, build_embedding_generator, build_link_repository,
-        build_message_broker, build_vector_store,
-    },
+use notes_infra::factory::{
+    BrokerProvider, build_database_pool, build_embedding_generator, build_link_repository,
+    build_message_broker, build_vector_store,
 };
 
 use crate::config::Config;
 
 mod config;
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "notes_worker=info,notes_infra=info".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    k_core::logging::init("notes_worker");
 
     let config = Config::from_env();
 
     #[cfg(feature = "smart-features")]
     {
         // Connect to message broker via factory
+
+        use k_core::db::DatabaseConfig;
         tracing::info!("Connecting to message broker: {}", config.broker_url);
         let broker_provider = BrokerProvider::Nats {
             url: config.broker_url.clone(),

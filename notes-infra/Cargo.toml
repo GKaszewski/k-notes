@@ -28,3 +28,8 @@ serde = { version = "1.0", features = ["derive"] }
 async-nats = { version = "0.45", optional = true }
 futures-util = { version = "0.3", optional = true }
 futures-core = "0.3"
+k-core = { git = "https://git.gabrielkaszewski.dev/GKaszewski/k-core", features = [
+    "logging",
+    "db-sqlx",
+    "sqlite"
+], version = "*"}

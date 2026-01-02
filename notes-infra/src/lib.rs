@@ -11,7 +11,6 @@
 //!
 //! ## Database
 //!
-//! - [`db::create_pool`] - Create a database connection pool
 //! - [`db::run_migrations`] - Run database migrations
 
 #[cfg(feature = "broker-nats")]
@@ -33,9 +32,7 @@ pub mod user_repository;
 pub mod vector;
 
 // Re-export for convenience
-#[cfg(feature = "sqlite")]
-pub use db::create_pool;
-pub use db::{DatabaseConfig, run_migrations};
+pub use db::run_migrations;
 #[cfg(feature = "sqlite")]
 pub use link_repository::SqliteLinkRepository;
 #[cfg(feature = "sqlite")]

@@ -2,7 +2,8 @@
 //!
 //! A high-performance, self-hosted note-taking API following hexagonal architecture.
 
-use std::sync::Arc;
+use k_core::db::DatabasePool;
+use std::{sync::Arc, time::Duration as StdDuration};
 use time::Duration;
 
 use axum::Router;
@@ -10,9 +11,8 @@ use axum_login::AuthManagerLayerBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tower_sessions::{Expiry, SessionManagerLayer};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use notes_infra::{DatabaseConfig, run_migrations};
+use notes_infra::run_migrations;
 
 mod auth;
 mod config;
@@ -27,55 +27,45 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "notes_api=debug,tower_http=debug,axum_login=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    k_core::logging::init("notes_api");
 
     // Load configuration
     let config = Config::from_env();
 
     // Setup database
     tracing::info!("Connecting to database: {}", config.database_url);
-    let db_config = DatabaseConfig::new(&config.database_url);
+    let db_config = k_core::db::DatabaseConfig {
+        url: config.database_url.clone(),
+        max_connections: 5,
+        min_connections: 1,
+        acquire_timeout: StdDuration::from_secs(30),
+    };
+
+    let db_pool = k_core::db::connect(&db_config).await?;
+
+    run_migrations(&db_pool).await?;
 
     #[cfg(feature = "smart-features")]
     use notes_infra::factory::build_link_repository;
     use notes_infra::factory::{
-        build_database_pool, build_note_repository, build_session_store, build_tag_repository,
-        build_user_repository,
+        build_note_repository, build_session_store, build_tag_repository, build_user_repository,
     };
-    let pool = build_database_pool(&db_config)
-        .await
-        .map_err(|e| anyhow::anyhow!(e))?;
-
-    // Run migrations
-    if let Err(e) = run_migrations(&pool).await {
-        tracing::warn!(
-            "Migration error (might be expected if not implemented for this DB): {}",
-            e
-        );
-    }
 
     // Create a default user for development
-    create_dev_user(&pool).await.ok();
+    create_dev_user(&db_pool).await.ok();
 
     // Create repositories via factory
-    let note_repo = build_note_repository(&pool)
+    let note_repo = build_note_repository(&db_pool)
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
-    let tag_repo = build_tag_repository(&pool)
+    let tag_repo = build_tag_repository(&db_pool)
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
-    let user_repo = build_user_repository(&pool)
+    let user_repo = build_user_repository(&db_pool)
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
     #[cfg(feature = "smart-features")]
-    let link_repo = build_link_repository(&pool)
+    let link_repo = build_link_repository(&db_pool)
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
 
@@ -127,7 +117,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Session layer
     // Use the factory to build the session store, agnostic of the underlying DB
-    let session_store = build_session_store(&pool)
+    let session_store = build_session_store(&db_pool)
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
     session_store
@@ -189,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn create_dev_user(pool: &notes_infra::db::DatabasePool) -> anyhow::Result<()> {
+async fn create_dev_user(pool: &DatabasePool) -> anyhow::Result<()> {
     use notes_domain::{Email, User};
     use notes_infra::factory::build_user_repository;
     use password_auth::generate_hash;

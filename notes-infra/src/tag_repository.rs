@@ -162,16 +162,16 @@ impl TagRepository for SqliteTagRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::{DatabaseConfig, DatabasePool, create_pool, run_migrations};
+    use crate::db::run_migrations;
     use crate::user_repository::SqliteUserRepository;
+    use k_core::db::DatabaseConfig;
     use notes_domain::{Email, User, UserRepository};
 
     async fn setup_test_db() -> SqlitePool {
         let config = DatabaseConfig::in_memory();
-        let pool = create_pool(&config).await.unwrap();
-        let db_pool = DatabasePool::Sqlite(pool.clone());
-        run_migrations(&db_pool).await.unwrap();
-        pool
+        let pool = k_core::db::connect(&config).await.unwrap();
+        run_migrations(&pool).await.unwrap();
+        pool.sqlite_pool().unwrap().clone()
     }
 
     async fn create_test_user(pool: &SqlitePool) -> User {

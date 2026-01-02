@@ -136,15 +136,16 @@ impl UserRepository for SqliteUserRepository {
 
 #[cfg(test)]
 mod tests {
+    use k_core::db::DatabaseConfig;
+
     use super::*;
-    use crate::db::{DatabaseConfig, DatabasePool, create_pool, run_migrations};
+    use crate::db::run_migrations;
 
     async fn setup_test_db() -> SqlitePool {
         let config = DatabaseConfig::in_memory();
-        let pool = create_pool(&config).await.unwrap();
-        let db_pool = DatabasePool::Sqlite(pool.clone());
-        run_migrations(&db_pool).await.unwrap();
-        pool
+        let pool = k_core::db::connect(&config).await.unwrap();
+        run_migrations(&pool).await.unwrap();
+        pool.sqlite_pool().unwrap().clone()
     }
 
     #[tokio::test]

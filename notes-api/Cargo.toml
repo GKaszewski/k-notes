@@ -9,12 +9,10 @@ default = ["sqlite", "smart-features"]
 sqlite = [
     "notes-infra/sqlite",
     "tower-sessions-sqlx-store/sqlite",
-    "sqlx/sqlite",
 ]
 postgres = [
     "notes-infra/postgres",
     "tower-sessions-sqlx-store/postgres",
-    "sqlx/postgres",
 ]
 smart-features = ["notes-infra/smart-features", "notes-infra/broker-nats"]
 
@@ -59,6 +57,9 @@ uuid = { version = "1.19.0", features = ["v4", "serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 
-# Database
-sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio"] }
 dotenvy = "0.15.7"
+
+k-core = { git = "https://git.gabrielkaszewski.dev/GKaszewski/k-core", features = [
+    "logging",
+    "db-sqlx",
+] }

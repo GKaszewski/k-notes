@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use crate::{DatabaseConfig, db::DatabasePool};
 #[cfg(feature = "sqlite")]
 use crate::{SqliteNoteRepository, SqliteTagRepository, SqliteUserRepository};
+use k_core::db::DatabaseConfig;
+use k_core::db::DatabasePool;
 use notes_domain::{NoteRepository, TagRepository, UserRepository};
 
 #[derive(Debug, thiserror::Error)]
@@ -95,9 +96,6 @@ pub async fn build_link_repository(
     match pool {
         DatabasePool::Sqlite(pool) => Ok(Arc::new(
             crate::link_repository::SqliteLinkRepository::new(pool.clone()),
-        )),
-        _ => Err(FactoryError::NotImplemented(
-            "LinkRepostiory for non-sqlite".to_string(),
         )),
     }
 }
