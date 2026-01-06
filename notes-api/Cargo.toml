@@ -6,15 +6,13 @@ default-run = "notes-api"
 
 [features]
 default = ["sqlite", "smart-features"]
-sqlite = [
-    "notes-infra/sqlite",
-    "tower-sessions-sqlx-store/sqlite",
-]
-postgres = [
-    "notes-infra/postgres",
-    "tower-sessions-sqlx-store/postgres",
-]
+sqlite = ["notes-infra/sqlite"]
+postgres = ["notes-infra/postgres"]
 smart-features = ["notes-infra/smart-features", "notes-infra/broker-nats"]
+auth-axum-login = ["notes-infra/auth-axum-login"]
+auth-oidc = ["notes-infra/auth-oidc"]
+auth-jwt = ["notes-infra/auth-jwt"]
+auth-full = ["auth-axum-login", "auth-oidc", "auth-jwt"]
 
 [dependencies]
 notes-domain = { path = "../notes-domain" }
@@ -28,9 +26,7 @@ tower = "0.5.2"
 tower-http = { version = "0.6.2", features = ["cors", "trace"] }
 
 # Authentication
-axum-login = "0.18"
-tower-sessions = "0.14"
-tower-sessions-sqlx-store = { version = "0.15", features = ["sqlite"] }
+
 password-auth = "1.0"
 time = "0.3"
 async-trait = "0.1.89"
@@ -64,5 +60,9 @@ k-core = { git = "https://git.gabrielkaszewski.dev/GKaszewski/k-core", features 
     "db-sqlx",
     "sqlite",
     "http",
-    "auth","sessions-db"
+    "auth",
+    "sessions-db",
 ] }
+
+
+tower-sessions = "0.14.0"

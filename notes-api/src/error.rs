@@ -26,6 +26,9 @@ pub enum ApiError {
 
     #[error("Forbidden: {0}")]
     Forbidden(String),
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
 }
 
 /// Error response body
@@ -93,6 +96,14 @@ impl IntoResponse for ApiError {
                 StatusCode::FORBIDDEN,
                 ErrorResponse {
                     error: "Forbidden".to_string(),
+                    details: Some(msg.clone()),
+                },
+            ),
+
+            ApiError::Unauthorized(msg) => (
+                StatusCode::UNAUTHORIZED,
+                ErrorResponse {
+                    error: "Unauthorized".to_string(),
                     details: Some(msg.clone()),
                 },
             ),

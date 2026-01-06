@@ -36,10 +36,14 @@ export default function RegisterPage() {
     if (!isConfigLoading && config?.allow_registration === false) {
       toast.error(t("Registration is currently disabled"));
       navigate("/login");
+    } else if (!isConfigLoading && config?.password_login_enabled === false) {
+      // Registration requires password login to be enabled
+      toast.error(t("Registration is not available"));
+      navigate("/login");
     }
   }, [config, isConfigLoading, navigate, t]);
 
-  if (isConfigLoading || config?.allow_registration === false) {
+  if (isConfigLoading || config?.allow_registration === false || config?.password_login_enabled === false) {
     return null; // Or a loading spinner
   }
 

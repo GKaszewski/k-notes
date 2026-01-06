@@ -100,5 +100,8 @@
   "Update": "Aktualizuj",
   "Welcome back": "Witaj ponownie",
   "work, todo, ideas": "praca, zadania, pomysły",
-  "Your notes will appear here. Click + to create one.": "Twoje notatki pojawią się tutaj. Kliknij +, aby utworzyć notatkę."
+  "Your notes will appear here. Click + to create one.": "Twoje notatki pojawią się tutaj. Kliknij +, aby utworzyć notatkę.",
+  "Sign in with SSO": "Zaloguj się przez SSO",
+  "Or continue with": "Lub kontynuuj przez",
+  "Completing sign in...": "Kończenie logowania..."
 }

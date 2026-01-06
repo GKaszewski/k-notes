@@ -4,18 +4,38 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["sqlite", "smart-features", "broker-nats"]
-sqlite = ["sqlx/sqlite", "k-core/sqlite", "tower-sessions-sqlx-store", "k-core/sessions-db"]
-postgres = ["sqlx/postgres", "k-core/postgres", "tower-sessions-sqlx-store", "k-core/sessions-db"]
+default = [
+    "sqlite",
+    "smart-features",
+    "broker-nats",
+    "auth-jwt",
+    "auth-oidc",
+    "auth-axum-login",
+]
+sqlite = [
+    "sqlx/sqlite",
+    "k-core/sqlite",
+    "tower-sessions-sqlx-store",
+    "k-core/sessions-db",
+]
+postgres = [
+    "sqlx/postgres",
+    "k-core/postgres",
+    "tower-sessions-sqlx-store",
+    "k-core/sessions-db",
+]
 smart-features = ["k-core/ai"]
 broker-nats = ["dep:futures-util", "k-core/broker-nats"]
+auth-axum-login = ["dep:axum-login", "dep:password-auth"]
+auth-oidc = ["dep:openidconnect", "dep:url"]
+auth-jwt = ["dep:jsonwebtoken"]
 
 [dependencies]
 k-core = { git = "https://git.gabrielkaszewski.dev/GKaszewski/k-core", features = [
     "logging",
     "db-sqlx",
-    "sessions-db"
-], version = "*"}
+    "sessions-db",
+], version = "*" }
 notes-domain = { path = "../notes-domain" }
 
 chrono = { version = "0.4.42", features = ["serde"] }
@@ -31,4 +51,18 @@ futures-util = { version = "0.3", optional = true }
 futures-core = "0.3"
 async-trait = "0.1.89"
 anyhow = "1.0.100"
-tower-sessions-sqlx-store = { version =  "0.15.0", optional = true}
+tower-sessions-sqlx-store = { version = "0.15.0", optional = true }
+tower-sessions = "0.14"
+
+# Auth dependencies (optional)
+axum-login = { version = "0.18", optional = true }
+password-auth = { version = "1.0", optional = true }
+openidconnect = { version = "4.0.1", optional = true }
+url = { version = "2.5.8", optional = true }
+jsonwebtoken = { version = "10.2.0", features = [
+    "sha2",
+    "p256",
+    "hmac",
+    "rsa",
+    "rust_crypto",
+], optional = true }

@@ -13,6 +13,7 @@
 //!
 //! - [`db::run_migrations`] - Run database migrations
 
+pub mod auth;
 #[cfg(feature = "broker-nats")]
 pub mod broker;
 pub mod db;

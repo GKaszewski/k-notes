@@ -13,6 +13,8 @@ thiserror = "2.0.17"
 tracing = "0.1"
 uuid = { version = "1.19.0", features = ["v4", "serde"] }
 futures-core = "0.3"
+email_address = "0.2.9"
+url = { version = "2.5.8", features = ["serde"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

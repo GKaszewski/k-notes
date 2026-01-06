@@ -1,9 +1,8 @@
 use axum::{Json, extract::State, http::StatusCode};
-use axum_login::{AuthSession, AuthUser};
 use serde::{Deserialize, Serialize};
 
-use crate::auth::AuthBackend;
-use crate::error::{ApiError, ApiResult};
+use crate::error::ApiResult;
+use crate::extractors::CurrentUser;
 use crate::state::AppState;
 use notes_domain::{Note, NoteFilter, Tag};
 
@@ -17,14 +16,9 @@ pub struct BackupData {
 /// GET /api/v1/export
 pub async fn export_data(
     State(state): State<AppState>,
-    auth: AuthSession<AuthBackend>,
+    CurrentUser(user): CurrentUser,
 ) -> ApiResult<Json<BackupData>> {
-    let user = auth
-        .user
-        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
-            "Login required".to_string(),
-        )))?;
-    let user_id = user.id();
+    let user_id = user.id;
 
     let notes = state
         .note_repo
@@ -39,15 +33,10 @@ pub async fn export_data(
 /// POST /api/v1/import
 pub async fn import_data(
     State(state): State<AppState>,
-    auth: AuthSession<AuthBackend>,
+    CurrentUser(user): CurrentUser,
     Json(payload): Json<BackupData>,
 ) -> ApiResult<StatusCode> {
-    let user = auth
-        .user
-        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
-            "Login required".to_string(),
-        )))?;
-    let user_id = user.id();
+    let user_id = user.id;
 
     // 1. Import standalone tags (to ensure even unused tags are restored)
     for tag in payload.tags {

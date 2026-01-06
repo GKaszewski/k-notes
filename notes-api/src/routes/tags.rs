@@ -5,29 +5,25 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use axum_login::{AuthSession, AuthUser};
 use uuid::Uuid;
 use validator::Validate;
 
 use notes_domain::TagName;
 
-use crate::auth::AuthBackend;
-use crate::dto::{CreateTagRequest, RenameTagRequest, TagResponse};
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
+use crate::{
+    dto::{CreateTagRequest, RenameTagRequest, TagResponse},
+    extractors::CurrentUser,
+};
 
 /// List all tags for the user
 /// GET /api/v1/tags
 pub async fn list_tags(
     State(state): State<AppState>,
-    auth: AuthSession<AuthBackend>,
+    CurrentUser(user): CurrentUser,
 ) -> ApiResult<Json<Vec<TagResponse>>> {
-    let user = auth
-        .user
-        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
-            "Login required".to_string(),
-        )))?;
-    let user_id = user.id();
+    let user_id = user.id;
 
     let tags = state.tag_service.list_tags(user_id).await?;
     let response: Vec<TagResponse> = tags.into_iter().map(TagResponse::from).collect();
@@ -39,15 +35,10 @@ pub async fn list_tags(
 /// POST /api/v1/tags
 pub async fn create_tag(
     State(state): State<AppState>,
-    auth: AuthSession<AuthBackend>,
+    CurrentUser(user): CurrentUser,
     Json(payload): Json<CreateTagRequest>,
 ) -> ApiResult<(StatusCode, Json<TagResponse>)> {
-    let user = auth
-        .user
-        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
-            "Login required".to_string(),
-        )))?;
-    let user_id = user.id();
+    let user_id = user.id;
 
     payload
         .validate()
@@ -66,16 +57,11 @@ pub async fn create_tag(
 /// PATCH /api/v1/tags/:id
 pub async fn rename_tag(
     State(state): State<AppState>,
-    auth: AuthSession<AuthBackend>,
+    CurrentUser(user): CurrentUser,
     Path(id): Path<Uuid>,
     Json(payload): Json<RenameTagRequest>,
 ) -> ApiResult<Json<TagResponse>> {
-    let user = auth
-        .user
-        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
-            "Login required".to_string(),
-        )))?;
-    let user_id = user.id();
+    let user_id = user.id;
 
     payload
         .validate()
@@ -94,15 +80,10 @@ pub async fn rename_tag(
 /// DELETE /api/v1/tags/:id
 pub async fn delete_tag(
     State(state): State<AppState>,
-    auth: AuthSession<AuthBackend>,
+    CurrentUser(user): CurrentUser,
     Path(id): Path<Uuid>,
 ) -> ApiResult<StatusCode> {
-    let user = auth
-        .user
-        .ok_or(ApiError::Domain(notes_domain::DomainError::Unauthorized(
-            "Login required".to_string(),
-        )))?;
-    let user_id = user.id();
+    let user_id = user.id;
 
     state.tag_service.delete_tag(id, user_id).await?;
 

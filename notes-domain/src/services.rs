@@ -375,36 +375,46 @@ impl UserService {
         Self { user_repo }
     }
 
-    /// Find or create a user by OIDC subject
-    /// This is the main entry point for OIDC authentication
-    pub async fn find_or_create_by_subject(
-        &self,
-        subject: &str,
-        email: Email,
-    ) -> DomainResult<User> {
+    pub async fn find_or_create(&self, subject: &str, email: &str) -> DomainResult<User> {
+        // 1. Try to find by subject (OIDC id)
         if let Some(user) = self.user_repo.find_by_subject(subject).await? {
-            Ok(user)
-        } else {
-            let user = User::new(subject, email);
-            self.user_repo.save(&user).await?;
-            Ok(user)
+            return Ok(user);
         }
+
+        // 2. Try to find by email
+        if let Some(mut user) = self.user_repo.find_by_email(email).await? {
+            // Link subject if missing (account linking logic)
+            if user.subject != subject {
+                user.subject = subject.to_string();
+                self.user_repo.save(&user).await?;
+            }
+            return Ok(user);
+        }
+
+        // 3. Create new user
+        let email = Email::try_from(email)?;
+        let user = User::new(subject, email);
+        self.user_repo.save(&user).await?;
+
+        Ok(user)
     }
 
-    /// Get a user by ID
-    pub async fn get_user(&self, id: Uuid) -> DomainResult<User> {
+    pub async fn find_by_id(&self, id: Uuid) -> DomainResult<User> {
         self.user_repo
             .find_by_id(id)
             .await?
             .ok_or(DomainError::UserNotFound(id))
     }
 
-    /// Delete a user and all associated data
-    pub async fn delete_user(&self, id: Uuid) -> DomainResult<()> {
-        // Note: In practice, we'd also need to delete notes and tags
-        // This would be handled by cascade delete in the database
-        // or by coordinating with other services
-        self.user_repo.delete(id).await
+    pub async fn find_by_email(&self, email: &str) -> DomainResult<Option<User>> {
+        self.user_repo.find_by_email(email).await
+    }
+
+    pub async fn create_local(&self, email: &str, password_hash: &str) -> DomainResult<User> {
+        let email = Email::try_from(email)?;
+        let user = User::new_local(email, password_hash);
+        self.user_repo.save(&user).await?;
+        Ok(user)
     }
 }
 
@@ -889,7 +899,7 @@ mod tests {
 
             let email = Email::try_from("test@example.com").unwrap();
             let user = service
-                .find_or_create_by_subject("oidc|123", email)
+                .find_or_create("oidc|123", email.as_ref())
                 .await
                 .unwrap();
 
@@ -903,13 +913,13 @@ mod tests {
 
             let email1 = Email::try_from("test@example.com").unwrap();
             let user1 = service
-                .find_or_create_by_subject("oidc|123", email1)
+                .find_or_create("oidc|123", email1.as_ref())
                 .await
                 .unwrap();
 
             let email2 = Email::try_from("test@example.com").unwrap();
             let user2 = service
-                .find_or_create_by_subject("oidc|123", email2)
+                .find_or_create("oidc|123", email2.as_ref())
                 .await
                 .unwrap();
 

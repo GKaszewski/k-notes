@@ -17,10 +17,7 @@ use crate::state::AppState;
 pub fn api_v1_router() -> Router<AppState> {
     let router = Router::new()
         // Auth routes
-        .route("/auth/register", post(auth::register))
-        .route("/auth/login", post(auth::login))
-        .route("/auth/logout", post(auth::logout))
-        .route("/auth/me", get(auth::me))
+        .nest("/auth", auth::router())
         // Note routes
         .route("/notes", get(notes::list_notes).post(notes::create_note))
         .route(

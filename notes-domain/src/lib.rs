@@ -17,12 +17,9 @@ pub mod services;
 pub mod value_objects;
 
 // Re-export commonly used types at crate root
-pub use entities::{MAX_TAGS_PER_NOTE, Note, NoteFilter, NoteVersion, Tag, User};
+pub use entities::*;
 pub use errors::{DomainError, DomainResult};
-pub use ports::MessageBroker;
-pub use repositories::{NoteRepository, TagRepository, UserRepository};
-pub use services::{CreateNoteRequest, NoteService, TagService, UpdateNoteRequest, UserService};
-pub use value_objects::{
-    Email, MAX_NOTE_TITLE_LENGTH, MAX_TAG_NAME_LENGTH, MIN_PASSWORD_LENGTH, NoteTitle, Password,
-    TagName, ValidationError,
-};
+pub use ports::*;
+pub use repositories::*;
+pub use services::*;
+pub use value_objects::*;

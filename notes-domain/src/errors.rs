@@ -91,6 +91,12 @@ impl DomainError {
     }
 }
 
+impl From<crate::value_objects::ValidationError> for DomainError {
+    fn from(error: crate::value_objects::ValidationError) -> Self {
+        DomainError::ValidationError(error.to_string())
+    }
+}
+
 /// Result type alias for domain operations
 pub type DomainResult<T> = Result<T, DomainError>;
 

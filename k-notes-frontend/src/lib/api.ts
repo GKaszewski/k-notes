@@ -6,6 +6,21 @@ declare global {
     }
 }
 
+const TOKEN_STORAGE_KEY = 'k_notes_auth_token';
+
+// JWT Token management
+export function setAuthToken(token: string): void {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+}
+
+export function getAuthToken(): string | null {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+}
+
+export function clearAuthToken(): void {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+}
+
 const getApiUrl = () => {
     // 1. Runtime config (Docker)
     if (window.env?.API_URL) {
@@ -40,17 +55,22 @@ export class ApiError extends Error {
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     const url = `${getApiUrl()}${endpoint}`;
+    const token = getAuthToken();
 
-    const headers = {
+    const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        ...options.headers,
+        ...(options.headers as Record<string, string> || {}),
     };
+
+    // Add Authorization header if we have a JWT token
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
 
     const config: RequestInit = {
         ...options,
         headers,
-        credentials: "include", // Important for cookies!
-        // signal: controller.signal, // Removing signal, using race instead
+        credentials: "include", // Still include for session-based auth
     };
 
     try {
@@ -60,8 +80,6 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
         );
 
         const response = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
-        // clearTimeout(timeoutId); // Not needed with race logic here (though leaking timer? No, race settles.)
-
 
         if (!response.ok) {
             // Try to parse error message
@@ -109,11 +127,18 @@ export const api = {
         }),
     delete: (endpoint: string) => fetchWithAuth(endpoint, { method: "DELETE" }),
     exportData: async () => {
+        const token = getAuthToken();
+        const headers: Record<string, string> = {};
+        if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+        }
         const response = await fetch(`${getApiUrl()}/export`, {
             credentials: "include",
+            headers,
         });
         if (!response.ok) throw new ApiError(response.status, "Failed to export data");
         return response.blob();
     },
     importData: (data: any) => api.post("/import", data),
 };
+

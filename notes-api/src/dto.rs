@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
 
-use notes_domain::{Note, Tag};
+use notes_domain::{Email, Note, Password, Tag};
+
+use crate::config::AuthMode;
 
 /// Request to create a new note
 #[derive(Debug, Deserialize, Validate)]
@@ -118,30 +120,24 @@ pub struct RenameTagRequest {
 }
 
 /// Login request
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize)]
 pub struct LoginRequest {
-    #[validate(email(message = "Invalid email format"))]
-    pub email: String,
-
-    #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
-    pub password: String,
+    pub email: Email,
+    pub password: Password,
 }
 
 /// Register request
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize)]
 pub struct RegisterRequest {
-    #[validate(email(message = "Invalid email format"))]
-    pub email: String,
-
-    #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
-    pub password: String,
+    pub email: Email,
+    pub password: Password,
 }
 
 /// User response DTO
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
     pub id: Uuid,
-    pub email: String,
+    pub email: Email,
     pub created_at: DateTime<Utc>,
 }
 
@@ -160,7 +156,7 @@ impl From<notes_domain::NoteVersion> for NoteVersionResponse {
         Self {
             id: version.id,
             note_id: version.note_id,
-            title: version.title.unwrap_or_default(), // Convert Option<String> to String
+            title: version.title.unwrap_or_default(),
             content: version.content,
             created_at: version.created_at,
         }
@@ -171,6 +167,9 @@ impl From<notes_domain::NoteVersion> for NoteVersionResponse {
 #[derive(Debug, Serialize)]
 pub struct ConfigResponse {
     pub allow_registration: bool,
+    pub auth_mode: AuthMode,
+    pub oidc_enabled: bool,
+    pub password_login_enabled: bool,
 }
 
 /// Note Link response DTO

@@ -2,17 +2,15 @@
 //!
 //! A high-performance, self-hosted note-taking API following hexagonal architecture.
 
-use k_core::{
-    db::DatabasePool,
-    http::server::{ServerConfig, apply_standard_middleware},
-};
+use k_core::http::server::{ServerConfig, apply_standard_middleware};
+use std::net::SocketAddr;
 use std::{sync::Arc, time::Duration as StdDuration};
 use time::Duration;
+use tokio::net::TcpListener;
+use tower_sessions::cookie::SameSite;
+use tower_sessions::{Expiry, SessionManagerLayer};
 
 use axum::Router;
-use axum_login::AuthManagerLayerBuilder;
-
-use tower_sessions::{Expiry, SessionManagerLayer};
 
 use notes_infra::run_migrations;
 
@@ -20,12 +18,14 @@ mod auth;
 mod config;
 mod dto;
 mod error;
+mod extractors;
 mod routes;
 mod state;
 
-use auth::AuthBackend;
 use config::Config;
 use state::AppState;
+
+use crate::config::AuthMode;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -52,9 +52,6 @@ async fn main() -> anyhow::Result<()> {
     use notes_infra::factory::{
         build_note_repository, build_session_store, build_tag_repository, build_user_repository,
     };
-
-    // Create a default user for development
-    create_dev_user(&db_pool).await.ok();
 
     // Create repositories via factory
     let note_repo = build_note_repository(&db_pool)
@@ -105,20 +102,16 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState::new(
         note_repo,
         tag_repo,
-        user_repo.clone(),
         #[cfg(feature = "smart-features")]
         link_repo,
         note_service,
         tag_service,
         user_service,
         config.clone(),
-    );
+    )
+    .await?;
 
-    // Auth backend
-    let backend = AuthBackend::new(user_repo); // no idea what now with this
-
-    // Session layer
-    // Use the factory to build the session store, agnostic of the underlying DB
+    // Build session store (needed for OIDC flow even in JWT mode)
     let session_store = build_session_store(&db_pool)
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
@@ -128,28 +121,24 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|e| anyhow::anyhow!(e))?;
 
     let session_layer = SessionManagerLayer::new(session_store)
-        .with_secure(false) // Set to true in prod
+        .with_secure(config.secure_cookie)
+        .with_same_site(SameSite::Lax)
         .with_expiry(Expiry::OnInactivity(Duration::days(7)));
-
-    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     let server_config = ServerConfig {
         cors_origins: config.cors_allowed_origins.clone(),
         session_secret: Some(config.session_secret.clone()),
     };
 
-    let app = Router::new()
-        .nest("/api/v1", routes::api_v1_router())
-        .layer(auth_layer)
-        .with_state(state);
-
+    // Build the app with appropriate auth layers based on config
+    let app = build_app(state, session_layer, user_repo, &config).await?;
     let app = apply_standard_middleware(app, &server_config);
 
-    let addr = format!("{}:{}", config.host, config.port);
-    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    let addr: SocketAddr = format!("{}:{}", config.host, config.port).parse()?;
+    let listener = TcpListener::bind(addr).await?;
 
-    tracing::info!("🚀 K-Notes API server running at http://{}", addr);
-    tracing::info!("🔒 Authentication enabled (axum-login)");
+    tracing::info!("🚀 API server running at http://{}", addr);
+    log_auth_info(&config);
     tracing::info!("📝 API endpoints available at /api/v1/...");
 
     axum::serve(listener, app).await?;
@@ -157,32 +146,61 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn create_dev_user(pool: &DatabasePool) -> anyhow::Result<()> {
-    use notes_domain::{Email, User};
-    use notes_infra::factory::build_user_repository;
-    use password_auth::generate_hash;
-    use uuid::Uuid;
+/// Build the application router with appropriate auth layers
+#[allow(unused_variables)] // config/user_repo used conditionally based on features
+async fn build_app(
+    state: AppState,
+    session_layer: SessionManagerLayer<notes_infra::session_store::InfraSessionStore>,
+    user_repo: std::sync::Arc<dyn notes_domain::UserRepository>,
+    config: &Config,
+) -> anyhow::Result<Router> {
+    let app = Router::new()
+        .nest("/api/v1", routes::api_v1_router())
+        .with_state(state);
 
-    let user_repo = build_user_repository(pool)
-        .await
-        .map_err(|e| anyhow::anyhow!(e))?;
-
-    // Check if dev user exists
-    let dev_user_id = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
-    if user_repo.find_by_id(dev_user_id).await?.is_none() {
-        let hash = generate_hash("password");
-        let dev_email = Email::try_from("dev@localhost.com")
-            .map_err(|e| anyhow::anyhow!("Invalid dev email: {}", e))?;
-        let user = User::with_id(
-            dev_user_id,
-            "dev|local",
-            dev_email,
-            Some(hash),
-            chrono::Utc::now(),
-        );
-        user_repo.save(&user).await?;
-        tracing::info!("Created development user: dev@localhost.com / password");
+    // When auth-axum-login feature is enabled, always apply the auth layer.
+    // This is needed because:
+    // 1. OIDC callback uses AuthSession for state management
+    // 2. Session-based login/register routes use it
+    // 3. The "JWT mode" just changes what the login endpoint returns, not the underlying session support
+    #[cfg(feature = "auth-axum-login")]
+    {
+        let auth_layer = auth::setup_auth_layer(session_layer, user_repo).await?;
+        return Ok(app.layer(auth_layer));
     }
 
-    Ok(())
+    // When auth-axum-login is not compiled in, just use session layer for OIDC flow
+    #[cfg(not(feature = "auth-axum-login"))]
+    {
+        let _ = user_repo; // Suppress unused warning
+        Ok(app.layer(session_layer))
+    }
+}
+
+/// Log authentication info based on enabled features and config
+fn log_auth_info(config: &Config) {
+    match config.auth_mode {
+        AuthMode::Session => {
+            tracing::info!("🔒 Authentication mode: Session (cookie-based)");
+        }
+        AuthMode::Jwt => {
+            tracing::info!("🔒 Authentication mode: JWT (Bearer token)");
+        }
+        AuthMode::Both => {
+            tracing::info!("🔒 Authentication mode: Both (JWT + Session)");
+        }
+    }
+
+    #[cfg(feature = "auth-axum-login")]
+    tracing::info!("  ✓ Session auth enabled (axum-login)");
+
+    #[cfg(feature = "auth-jwt")]
+    if config.jwt_secret.is_some() {
+        tracing::info!("  ✓ JWT auth enabled");
+    }
+
+    #[cfg(feature = "auth-oidc")]
+    if config.oidc_issuer.is_some() {
+        tracing::info!("  ✓ OIDC integration enabled");
+    }
 }

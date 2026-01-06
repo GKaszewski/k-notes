@@ -5,6 +5,7 @@ import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/dashboard";
 import PrivacyPolicyPage from "@/pages/privacy-policy";
+import OidcCallbackPage from "@/pages/oidc-callback";
 import Layout from "@/components/layout";
 import { useSync } from "@/lib/sync";
 import { useMobileStatusBar } from "@/hooks/use-mobile-status-bar";
@@ -17,6 +18,7 @@ function App() {
     <Routes>
       {/* Public Routes (accessible to everyone) */}
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/auth/callback" element={<OidcCallbackPage />} />
 
       {/* Public Routes (only accessible if NOT logged in) */}
       <Route element={<PublicRoute />}>
@@ -40,3 +42,4 @@ function App() {
 }
 
 export default App;
+
