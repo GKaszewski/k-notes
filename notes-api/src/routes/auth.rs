@@ -387,12 +387,13 @@ async fn oidc_callback(
         .await
         .map_err(|_| ApiError::Internal("Session error".into()))?;
 
-    // In JWT mode, redirect to frontend with token in URL fragment
+    // In JWT mode, redirect to frontend with token in query parameter
+    // Note: Hash fragments (#) are not preserved in HTTP redirects, so we use query params
     #[cfg(feature = "auth-jwt")]
     if matches!(auth_mode, AuthMode::Jwt | AuthMode::Both) {
         let token = create_jwt_for_user(&user, &state)?;
         let redirect_url = format!(
-            "{}/auth/callback#access_token={}",
+            "{}/auth/callback?token={}",
             state.config.frontend_url, token
         );
         return Ok(axum::response::Redirect::to(&redirect_url).into_response());
@@ -464,12 +465,13 @@ async fn oidc_callback(
         .await
         .map_err(|_| ApiError::Internal("Session error".into()))?;
 
-    // Redirect to frontend with token in URL fragment
+    // Redirect to frontend with token in query parameter
+    // Note: Hash fragments (#) are not preserved in HTTP redirects, so we use query params
     #[cfg(feature = "auth-jwt")]
     {
         let token = create_jwt_for_user(&user, &state)?;
         let redirect_url = format!(
-            "{}/auth/callback#access_token={}",
+            "{}/auth/callback?token={}",
             state.config.frontend_url, token
         );
         return Ok(axum::response::Redirect::to(&redirect_url));

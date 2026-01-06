@@ -22,10 +22,11 @@ export default function OidcCallbackPage() {
     const { t } = useTranslation();
 
     useEffect(() => {
-        // Check for token in URL hash (implicit flow) or query params
+        // Check for token in query params (primary) or URL hash (legacy/fallback)
+        const token = searchParams.get("token");
         const hashParams = new URLSearchParams(window.location.hash.slice(1));
         const accessToken =
-            hashParams.get("access_token") || searchParams.get("access_token");
+            token || searchParams.get("access_token") || hashParams.get("access_token");
 
         if (accessToken) {
             // JWT mode: store the token
