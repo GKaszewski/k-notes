@@ -1,3 +1,47 @@
 [workspace]
 resolver = "3"
-members = [ "notes-api", "notes-domain", "notes-infra", "notes-worker"]
+members = [
+    "crates/adapters/auth",
+    "crates/adapters/event-payload",
+    "crates/adapters/event-publisher-memory",
+    "crates/adapters/fastembed",
+    "crates/adapters/nats",
+    "crates/adapters/qdrant",
+    "crates/adapters/sqlite",
+    "crates/api-types",
+    "crates/application",
+    "crates/bootstrap",
+    "crates/domain",
+    "crates/presentation",
+    "crates/wiring",
+    "crates/worker",
+]
+
+[workspace.dependencies]
+api-types = { path = "crates/api-types" }
+auth = { path = "crates/adapters/auth" }
+event-payload = { path = "crates/adapters/event-payload" }
+event-publisher-memory = { path = "crates/adapters/event-publisher-memory" }
+fastembed-adapter = { path = "crates/adapters/fastembed" }
+nats = { path = "crates/adapters/nats" }
+qdrant-adapter = { path = "crates/adapters/qdrant" }
+sqlite = { path = "crates/adapters/sqlite" }
+application = { path = "crates/application" }
+bootstrap = { path = "crates/bootstrap" }
+domain = { path = "crates/domain" }
+presentation = { path = "crates/presentation" }
+wiring = { path = "crates/wiring" }
+worker = { path = "crates/worker" }
+
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+tracing-subscriber = { features = ["fmt", "env-filter"], version = "0.3" }
+async-trait = "0.1"
+rand = "0.10.1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+futures = "0.3"

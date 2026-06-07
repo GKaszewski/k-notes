@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 export interface NoteLink {
-    source_note_id: string;
-    target_note_id: string;
+    source_id: string;
+    target_id: string;
     score: number;
     created_at: string;
 }

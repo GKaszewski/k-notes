@@ -1,0 +1,22 @@
+[package]
+name = "wiring"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# domain + application
+domain = { workspace = true }
+application = { workspace = true }
+
+# adapters
+sqlite = { workspace = true }
+auth = { workspace = true }
+event-publisher-memory = { workspace = true }
+nats = { workspace = true }
+fastembed-adapter = { workspace = true }
+qdrant-adapter = { workspace = true }
+
+# utilities
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }

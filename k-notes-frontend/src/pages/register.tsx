@@ -17,8 +17,8 @@ import { useTranslation } from "react-i18next";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string().min(8, "Password must be at least 8 characters"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -31,36 +31,26 @@ export default function RegisterPage() {
   const { data: config, isLoading: isConfigLoading } = useConfig();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!isConfigLoading && config?.allow_registration === false) {
       toast.error(t("Registration is currently disabled"));
       navigate("/login");
-    } else if (!isConfigLoading && config?.password_login_enabled === false) {
-      // Registration requires password login to be enabled
-      toast.error(t("Registration is not available"));
-      navigate("/login");
     }
   }, [config, isConfigLoading, navigate, t]);
 
-  if (isConfigLoading || config?.allow_registration === false || config?.password_login_enabled === false) {
-    return null; // Or a loading spinner
+  if (isConfigLoading || config?.allow_registration === false) {
+    return null;
   }
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      confirmPassword: "",
-    },
+    defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
   const onSubmit = (data: RegisterFormValues) => {
-    register({
-      email: data.email,
-      password: data.password,
-    }, {
+    register({ email: data.email, password: data.password }, {
       onError: (error: any) => {
         if (error instanceof ApiError) {
           toast.error(error.message);
@@ -70,8 +60,6 @@ export default function RegisterPage() {
       },
     });
   };
-
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 relative">

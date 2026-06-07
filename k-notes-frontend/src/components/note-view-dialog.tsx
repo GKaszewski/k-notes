@@ -24,7 +24,7 @@ export function NoteViewDialog({ note, open, onOpenChange, onEdit, onSelectNote 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className={clsx("max-w-3xl max-h-[85vh] flex flex-col p-6 gap-0 overflow-hidden", colorClass)}>
+            <DialogContent className={clsx("max-w-3xl max-h-[85dvh] flex flex-col p-6 gap-0 overflow-hidden", colorClass)}>
                 <DialogHeader className="pb-4 shrink-0">
                     <div className="flex justify-between items-start gap-4">
                         <DialogTitle className="text-2xl font-bold leading-tight wrap-break-word">

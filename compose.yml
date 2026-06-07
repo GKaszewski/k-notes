@@ -4,60 +4,48 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # In production, use a secure secret
-      - SESSION_SECRET=dev_secret_key_12345
       - DATABASE_URL=sqlite:///app/data/notes.db
-      - CORS_ALLOWED_ORIGINS=http://localhost:8080,http://localhost:5173
+      - JWT_SECRET=dev-secret-not-for-production-use
+      - CORS_ORIGINS=http://localhost:5173
       - HOST=0.0.0.0
       - PORT=3000
       - ALLOW_REGISTRATION=true
+      - NATS_URL=nats://nats:4222
+      # Uncomment to enable smart features:
+      # - QDRANT_URL=http://qdrant:6334
     volumes:
       - ./data:/app/data
+    depends_on:
+      - nats
 
   worker:
     build: .
-    command: ["./notes-worker"] 
+    command: ["./worker"]
     environment:
       - DATABASE_URL=sqlite:///app/data/notes.db
-      - BROKER_URL=nats://nats:4222
-      - QDRANT_URL=http://qdrant:6334
-      - EMBEDDING_PROVIDER=fastembed 
+      - NATS_URL=nats://nats:4222
+      - ENABLE_EMBEDDINGS=true
+      # Uncomment to enable smart features:
+      # - QDRANT_URL=http://qdrant:6334
     depends_on:
       - backend
       - nats
-      - qdrant
     volumes:
       - ./data:/app/data
 
-  frontend:
-    build: ./k-notes-frontend
-    ports:
-      - "8080:80"
-    environment:
-      # This sets the default backend URL for the frontend
-      - API_URL=http://localhost:3000
-    depends_on:
-      - backend
-
   nats:
     image: nats:alpine
-    container_name: k_notes_nats
+    # --jetstream enables persistent messaging required by the worker
+    command: ["--jetstream"]
     ports:
       - "4222:4222"
-      - "6222:6222"
-      - "8222:8222"
     restart: unless-stopped
 
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: k_notes_qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - ./data/qdrant_storage:/qdrant/storage:z
-    restart: unless-stopped
-
-# Optional: Define volumes explicitly if needed
-# volumes:
-#   backend_data:
+  # Uncomment to enable smart features (semantic search + related notes)
+  # qdrant:
+  #   image: qdrant/qdrant:latest
+  #   ports:
+  #     - "6334:6334"
+  #   volumes:
+  #     - ./data/qdrant_storage:/qdrant/storage:z
+  #   restart: unless-stopped

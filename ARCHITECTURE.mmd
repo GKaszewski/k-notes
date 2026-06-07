@@ -1,0 +1,93 @@
+---
+title: K-Notes — Hexagonal Architecture + DDD
+---
+graph TB
+    subgraph Binaries["Binaries (Composition Root)"]
+        BOOTSTRAP["bootstrap<br/><i>Axum HTTP server</i><br/>Routes, Handlers, SPA serving,<br/>OpenAPI docs (/docs, /scalar)"]
+        WORKER["worker<br/><i>Event consumer</i><br/>NoteEventHandler,<br/>Semaphore(8), graceful shutdown"]
+    end
+
+    subgraph Wiring["wiring (Assembly)"]
+        CTX_BUILD["build_context()<br/><i>Reads env vars, connects DB,<br/>wires adapters into AppContext</i>"]
+    end
+
+    subgraph Application["Application Layer"]
+        direction TB
+        CTX["AppContext<br/><i>Repositories + Services + AppConfig</i>"]
+        subgraph UseCases["Use Cases (CQRS)"]
+            UC_AUTH["auth<br/>register, login"]
+            UC_NOTES["notes<br/>create, update, delete, get,<br/>list, search, pin, archive,<br/>add_tag, remove_tag,<br/>get_versions, get_related,<br/>export, import"]
+            UC_TAGS["tags<br/>create (get-or-create),<br/>delete, rename, list"]
+            UC_SMART["smart<br/>process_note, delete_vectors"]
+        end
+        WORKER_SVC["WorkerService<br/><i>EventConsumer + EventHandler[]<br/>Semaphore(8), JoinSet,<br/>shutdown watch channel</i>"]
+    end
+
+    subgraph Domain["Domain Layer (0 dependencies)"]
+        direction TB
+        subgraph Contexts["Business Contexts"]
+            D_NOTE["note/<br/>Note, NoteId, NoteVersion,<br/>NoteLink, NoteFilter,<br/>NoteTitle, NoteColor"]
+            D_TAG["tag/<br/>Tag, TagId, TagName"]
+            D_USER["user/<br/>User, UserId, Email,<br/>Password, PasswordHash"]
+            D_SMART["smart/<br/>EmbeddingGenerator port<br/>VectorStore port"]
+        end
+        subgraph Ports["Port Traits"]
+            P_REPOS["NoteRepository<br/>TagRepository<br/>UserRepository<br/>LinkRepository"]
+            P_AUTH["PasswordHasher"]
+            P_EVENTS["EventPublisher<br/>EventConsumer<br/>EventHandler"]
+        end
+        EVENTS["DomainEvent<br/><i>NoteCreated, NoteUpdated,<br/>NoteDeleted</i><br/>EventEnvelope (ack / nack)"]
+    end
+
+    subgraph ApiTypes["api-types (0 domain deps)"]
+        DTO["DTOs<br/><i>NoteResponse, TagResponse,<br/>UserResponse, AuthResponse,<br/>BackupData, ConfigResponse,<br/>ErrorResponse, ...</i>"]
+    end
+
+    subgraph Adapters["Adapters (implement Port Traits)"]
+        direction TB
+        subgraph Storage["Storage"]
+            A_SQLITE["sqlite<br/><i>SQLiteNoteRepository<br/>SqliteTagRepository<br/>SqliteUserRepository<br/>SqliteLinkRepository<br/>Migrations (FTS5)</i>"]
+        end
+        subgraph Auth["Auth"]
+            A_AUTH["auth<br/><i>Argon2PasswordHasher<br/>JwtValidator (HS256)<br/>OidcService (optional)</i>"]
+        end
+        subgraph Messaging["Messaging"]
+            A_NATS["nats<br/><i>JetStream publisher + consumer<br/>Explicit ack/nack, backoff,<br/>DLQ via max_deliver advisory</i>"]
+            A_MEM["event-publisher-memory<br/><i>Broadcast bus for dev/test</i>"]
+            A_PAYLOAD["event-payload<br/><i>DomainEvent ↔ JSON wire format</i>"]
+        end
+        subgraph Smart["Smart Features"]
+            A_FASTEMBED["fastembed<br/><i>FastEmbedGenerator<br/>AllMiniLML6V2 (384-dim)</i>"]
+            A_QDRANT["qdrant<br/><i>QdrantVectorStore<br/>upsert, find_similar, delete</i>"]
+        end
+    end
+
+    %% Dependency arrows
+    BOOTSTRAP -->|"uses"| Wiring
+    BOOTSTRAP -->|"maps to"| ApiTypes
+    WORKER -->|"uses"| Wiring
+
+    Wiring -->|"assembles"| Application
+    Wiring -->|"constructs"| Adapters
+
+    Application -->|"depends on"| Domain
+
+    Adapters -.->|"implements"| Ports
+
+    %% Key flows
+    BOOTSTRAP ===|"JWT Bearer"| DTO
+    WORKER ===|"DomainEvent"| EVENTS
+
+    classDef domain fill:#1a1a2e,stroke:#e94560,color:#fff
+    classDef app fill:#16213e,stroke:#0f3460,color:#fff
+    classDef adapter fill:#0f3460,stroke:#533483,color:#fff
+    classDef binary fill:#533483,stroke:#e94560,color:#fff
+    classDef api fill:#2a2a4a,stroke:#e94560,color:#fff
+    classDef wiring fill:#0d2137,stroke:#22c55e,color:#fff
+
+    class Domain domain
+    class Application app
+    class Adapters adapter
+    class Binaries binary
+    class ApiTypes api
+    class Wiring wiring

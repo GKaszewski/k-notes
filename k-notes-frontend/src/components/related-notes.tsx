@@ -38,16 +38,16 @@ export function RelatedNotes({ noteId, onSelectNote }: RelatedNotesProps) {
             </h3>
             <div className="flex flex-wrap gap-2">
                 {relatedLinks.map((link) => {
-                    const targetNote = notes?.find((n: any) => n.id === link.target_note_id);
+                    const targetNote = notes?.find((n: any) => n.id === link.target_id);
                     if (!targetNote) return null;
 
                     return (
                         <Button
-                            key={link.target_note_id}
+                            key={link.target_id}
                             variant="outline"
                             size="sm"
                             className="h-8 text-xs max-w-[200px] justify-start"
-                            onClick={() => onSelectNote?.(link.target_note_id)}
+                            onClick={() => onSelectNote?.(link.target_id)}
                         >
                             <span className="truncate">{targetNote.title || "Untitled"}</span>
                             <Badge variant="secondary" className="ml-2 text-[10px] h-5 px-1">

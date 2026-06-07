@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Settings, ExternalLink } from "lucide-react";
+import { Settings } from "lucide-react";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Link } from "react-router-dom";
-import { useLogin, useOidcLogin } from "@/hooks/use-auth";
+import { useLogin } from "@/hooks/use-auth";
 import { useConfig } from "@/hooks/useConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import { useTranslation } from "react-i18next";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -26,14 +26,11 @@ export default function LoginPage() {
   const { mutate: login, isPending } = useLogin();
   const { data: config } = useConfig();
   const { t } = useTranslation();
-  const startOidcLogin = useOidcLogin();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = (data: LoginFormValues) => {
@@ -47,8 +44,6 @@ export default function LoginPage() {
       },
     });
   };
-
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950 p-4 relative">
@@ -65,70 +60,39 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* OIDC/SSO Login Button */}
-          {config?.oidc_enabled && (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={startOidcLogin}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                {t("Sign in with SSO")}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("Email")}</FormLabel>
+                    <FormControl>
+                      <Input placeholder="name@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("Password")}</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={isPending}>
+                {isPending ? t("Signing in...") : t("Sign in")}
               </Button>
-              {/* Divider only if both OIDC and password login are enabled */}
-              {config?.password_login_enabled && (
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      {t("Or continue with")}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Email/Password Form - only show if password login is enabled */}
-          {config?.password_login_enabled !== false && (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("Email")}</FormLabel>
-                      <FormControl>
-                        <Input placeholder="name@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("Password")}</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isPending}>
-                  {isPending ? t("Signing in...") : t("Sign in")}
-                </Button>
-              </form>
-            </Form>
-          )}
+            </form>
+          </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
           {config?.allow_registration !== false && (
@@ -145,4 +109,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

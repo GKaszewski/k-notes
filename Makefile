@@ -1,48 +1,66 @@
-.PHONY: setup dev test check clean migrate
+.DEFAULT_GOAL := check
 
-# Database URL for development
 DATABASE_URL ?= sqlite:data.db?mode=rwc
+IMAGE        ?= registry.gabrielkaszewski.dev/k-notes:latest
 
-# Setup development environment
-setup:
-	@echo "🔧 Setting up K-Notes development environment..."
-	cargo build --workspace
-	@echo "✅ Setup complete!"
+# ── Local dev ─────────────────────────────────────────────────────────────────
 
-# Run the development server
+# Start the API server. JWT_SECRET is required; this default is dev-only.
 dev:
-	@echo "🚀 Starting K-Notes API server..."
-	DATABASE_URL=$(DATABASE_URL) cargo run --package notes-api
+	DATABASE_URL=$(DATABASE_URL) JWT_SECRET=dev-secret-not-for-production-use \
+	  cargo run -p bootstrap
 
-# Run all tests
+# Start the background worker (uses in-memory bus when NATS_URL is unset).
+dev-worker:
+	DATABASE_URL=$(DATABASE_URL) cargo run -p worker
+
+# Start the Vite dev server for the frontend (expects the API on :3000).
+dev-frontend:
+	cd k-notes-frontend && bun run dev
+
+# Build the frontend SPA into k-notes-frontend/dist.
+build-frontend:
+	cd k-notes-frontend && bun install && bun run build
+
+# ── Quality checks ────────────────────────────────────────────────────────────
+
+# Run the full check suite (same order as CI).
+check: fmt-check clippy test
+	@echo "✅ All checks passed"
+
+fmt:
+	cargo fmt
+
+fmt-check:
+	cargo fmt --check
+
+clippy:
+	cargo clippy --workspace -- -D warnings
+
 test:
-	@echo "🧪 Running tests..."
 	cargo test --workspace
 
-# Check code compiles
-check:
-	cargo check --workspace
+# Apply fmt + clippy fixes in one shot.
+fix:
+	cargo fmt
+	cargo clippy --fix --allow-dirty --allow-staged
 
-# Clean build artifacts
+# ── Docker ────────────────────────────────────────────────────────────────────
+
+docker-build:
+	docker buildx build --platform linux/amd64 -t $(IMAGE) .
+
+docker-push:
+	docker push $(IMAGE)
+
+deploy:
+	IMAGE=$(IMAGE) ./deploy.sh
+
+# ── Housekeeping ──────────────────────────────────────────────────────────────
+
 clean:
 	cargo clean
 	rm -f data.db data.db-wal data.db-shm
 
-# Run migrations (done automatically on server start)
-migrate:
-	@echo "📦 Running database migrations..."
-	DATABASE_URL=$(DATABASE_URL) cargo run --package notes-api -- --migrate-only 2>/dev/null || \
-		(cargo run --package notes-api &  sleep 2 && kill $$!)
-	@echo "✅ Migrations complete!"
-
-# Run clippy lints
-lint:
-	cargo clippy --workspace -- -D warnings
-
-# Format code
-fmt:
-	cargo fmt --all
-
-# Quick development cycle
-quick: check test
-	@echo "✅ All checks passed!"
+.PHONY: dev dev-worker dev-frontend build-frontend check fmt fmt-check clippy test fix \
+        docker-build docker-push deploy clean

@@ -1,0 +1,14 @@
+[package]
+name = "qdrant-adapter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+qdrant-client = "1"
+
+[dev-dependencies]
+tokio = { workspace = true }

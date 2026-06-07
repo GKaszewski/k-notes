@@ -28,7 +28,7 @@ export function VersionHistoryDialog({
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${version.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${format(new Date(version.created_at), "yyyy-MM-dd-HH-mm")}.txt`;
+        a.download = `${(version.title ?? "untitled").replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${format(new Date(version.created_at), "yyyy-MM-dd-HH-mm")}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -40,7 +40,7 @@ export function VersionHistoryDialog({
         if (confirm("Are you sure you want to restore this version? The current version will be saved as a new history entry.")) {
             updateNote({
                 id: noteId,
-                title: version.title,
+                title: version.title ?? undefined,
                 content: version.content,
             }, {
                 onSuccess: () => {
@@ -53,7 +53,7 @@ export function VersionHistoryDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl h-[80vh] flex flex-col">
+            <DialogContent className="max-w-2xl max-h-[85dvh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <History className="h-5 w-5" />

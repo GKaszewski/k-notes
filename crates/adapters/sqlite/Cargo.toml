@@ -1,0 +1,15 @@
+[package]
+name = "sqlite"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "migrate", "macros"] }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

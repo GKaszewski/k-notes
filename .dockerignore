@@ -1,10 +1,10 @@
 target/
-node_modules/
 .git/
-.fastembed_cache/
 *.db
 *.db-shm
 *.db-wal
-k-notes-frontend/
-dist/
 .env
+data/
+# Frontend build artefacts are excluded individually; the source must reach the builder stage
+k-notes-frontend/node_modules/
+k-notes-frontend/dist/

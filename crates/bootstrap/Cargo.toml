@@ -1,0 +1,20 @@
+[package]
+name = "bootstrap"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
+
+[dependencies]
+application = { workspace = true }
+auth = { workspace = true, features = ["jwt"] }
+presentation = { workspace = true }
+wiring = { workspace = true }
+axum = "0.8"
+dotenvy = "0.15"
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }

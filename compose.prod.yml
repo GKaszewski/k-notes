@@ -1,0 +1,66 @@
+services:
+  backend:
+    image: registry.gabrielkaszewski.dev/k-notes:latest
+    environment:
+      - DATABASE_URL=sqlite:///app/data/notes.db
+      - JWT_SECRET=change-me
+      - JWT_ISSUER=https://idm.gabrielkaszewski.dev/oauth/v2/keys
+      - CORS_ORIGINS=https://knotes.gabrielkaszewski.dev
+      - HOST=0.0.0.0
+      - PORT=3000
+      - ALLOW_REGISTRATION=false
+      - NATS_URL=nats://k_nats:4222
+      - QDRANT_URL=http://qdrant:6334
+      - QDRANT_COLLECTION=notes
+      # SPA is bundled in the image at /app/frontend/dist (set in Dockerfile)
+      # Override here only if you move the dist elsewhere:
+      # - SPA_DIR=/app/frontend/dist
+    volumes:
+      - ./data:/app/data
+    networks:
+      - traefik
+      - shared-services
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik"
+      # Both the app domain and the API subdomain point to the same service.
+      # The backend serves /api/v1/* and falls back to the SPA for everything else.
+      - "traefik.http.routers.knotes.rule=Host(`knotes.gabrielkaszewski.dev`) || Host(`api.knotes.gabrielkaszewski.dev`)"
+      - "traefik.http.routers.knotes.entrypoints=websecure"
+      - "traefik.http.routers.knotes.tls.certresolver=letsencrypt"
+      - "traefik.http.services.knotes.loadbalancer.server.port=3000"
+
+  worker:
+    image: registry.gabrielkaszewski.dev/k-notes:latest
+    command: ["./worker"]
+    environment:
+      - DATABASE_URL=sqlite:///app/data/notes.db
+      - NATS_URL=nats://k_nats:4222
+      - QDRANT_URL=http://qdrant:6334
+      - ENABLE_EMBEDDINGS=true
+    depends_on:
+      - backend
+      - qdrant
+    volumes:
+      - ./data:/app/data
+    networks:
+      - internal
+      - shared-services
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: k_notes_qdrant
+    volumes:
+      - ./data/qdrant_storage:/qdrant/storage:z
+    restart: unless-stopped
+    networks:
+      - internal
+
+networks:
+  traefik:
+    external: true
+  shared-services:
+    external: true
+  internal:
+    driver: bridge

@@ -1,0 +1,24 @@
+[package]
+name = "presentation"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain = { workspace = true }
+application = { workspace = true }
+api-types = { workspace = true }
+auth = { workspace = true, features = ["jwt"] }
+
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors", "fs", "trace"] }
+utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
+utoipa-scalar = { version = "0.3", features = ["axum"], default-features = false }
+utoipa-swagger-ui = { version = "9", features = ["axum", "vendored"] }
+
+async-trait = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

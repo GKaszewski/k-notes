@@ -49,7 +49,8 @@ export function Editor({ value, onChange, placeholder, className }: EditorProps)
         editorProps: {
             attributes: {
                 class: cn(
-                    "min-h-[100px] max-h-[400px] overflow-y-auto w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 prose dark:prose-invert max-w-none break-all min-w-0",
+                    // text-base (16px) on all sizes prevents iOS Safari auto-zoom on focus.
+                    "min-h-[100px] max-h-[40dvh] overflow-y-auto w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 prose dark:prose-invert max-w-none break-all min-w-0",
                     className
                 ),
             },

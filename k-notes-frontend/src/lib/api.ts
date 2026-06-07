@@ -22,17 +22,17 @@ export function clearAuthToken(): void {
 }
 
 const getApiUrl = () => {
-    // 1. Runtime config (Docker)
+    // 1. Runtime config injected via window.env (e.g. for cross-origin setups)
     if (window.env?.API_URL) {
         return `${window.env.API_URL}/api/v1`;
     }
-    // 2. LocalStorage override
+    // 2. LocalStorage override (user-configurable in settings)
     const stored = localStorage.getItem("k_notes_api_url");
     if (stored) {
         return `${stored}/api/v1`;
     }
-    // 3. Default fallback
-    return "http://localhost:3000/api/v1";
+    // 3. Same-origin fallback — works when SPA is served by the backend process
+    return "/api/v1";
 };
 
 export const getBaseUrl = () => {
