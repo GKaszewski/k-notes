@@ -1,17 +1,19 @@
 const NOTE_COLORS = [
-    { name: "DEFAULT", value: "bg-background border-border", label: "Default" },
-    { name: "RED", value: "bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-900", label: "Red" },
-    { name: "ORANGE", value: "bg-orange-50 border-orange-200 dark:bg-orange-950 dark:border-orange-900", label: "Orange" },
-    { name: "YELLOW", value: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-900", label: "Yellow" },
-    { name: "GREEN", value: "bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-900", label: "Green" },
-    { name: "TEAL", value: "bg-teal-50 border-teal-200 dark:bg-teal-950 dark:border-teal-900", label: "Teal" },
-    { name: "BLUE", value: "bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-900", label: "Blue" },
-    { name: "INDIGO", value: "bg-indigo-50 border-indigo-200 dark:bg-indigo-950 dark:border-indigo-900", label: "Indigo" },
+    { name: "DEFAULT",  label: "Default", glass: null,                        borderClass: "",                      swatch: "rgba(255,255,255,0.25)" },
+    { name: "RED",      label: "Red",     glass: "rgba(239, 68, 68, 0.22)",   borderClass: "border-red-400/50",     swatch: "rgb(239, 68, 68)" },
+    { name: "ORANGE",   label: "Orange",  glass: "rgba(249, 115, 22, 0.22)",  borderClass: "border-orange-400/50",  swatch: "rgb(249, 115, 22)" },
+    { name: "YELLOW",   label: "Yellow",  glass: "rgba(234, 179, 8, 0.22)",   borderClass: "border-yellow-400/50",  swatch: "rgb(234, 179, 8)" },
+    { name: "GREEN",    label: "Green",   glass: "rgba(34, 197, 94, 0.22)",   borderClass: "border-green-400/50",   swatch: "rgb(34, 197, 94)" },
+    { name: "TEAL",     label: "Teal",    glass: "rgba(20, 184, 166, 0.22)",  borderClass: "border-teal-400/50",    swatch: "rgb(20, 184, 166)" },
+    { name: "BLUE",     label: "Blue",    glass: "rgba(59, 130, 246, 0.22)",  borderClass: "border-blue-400/50",    swatch: "rgb(59, 130, 246)" },
+    { name: "INDIGO",   label: "Indigo",  glass: "rgba(99, 102, 241, 0.22)",  borderClass: "border-indigo-400/50",  swatch: "rgb(99, 102, 241)" },
 ];
 
-export function getNoteColor(colorName: string | undefined): string {
+export function getNoteColor(colorName: string | undefined): { glass: string | null; borderClass: string } {
     const color = NOTE_COLORS.find(c => c.name === colorName);
-    return color ? color.value : NOTE_COLORS[0].value;
+    return color
+        ? { glass: color.glass, borderClass: color.borderClass }
+        : { glass: null, borderClass: "" };
 }
 
 export { NOTE_COLORS };

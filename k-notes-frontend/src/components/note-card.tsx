@@ -92,17 +92,18 @@ export function NoteCard({ note }: NoteCardProps) {
     });
   }
 
-  const colorClass = getNoteColor(note.color);
+  const { glass, borderClass } = getNoteColor(note.color);
 
   return (
     <>
       <Card
         className={clsx(
           "relative group transition-all hover:shadow-md cursor-pointer",
-          colorClass,
+          borderClass,
           note.is_pinned ? 'border-primary shadow-sm' : '',
           selected && 'ring-2 ring-primary ring-offset-2'
         )}
+        style={glass ? { background: glass } : undefined}
         onClick={() => !isBulkMode && setViewOpen(true)}
       >
         {/* Bulk selection checkbox */}

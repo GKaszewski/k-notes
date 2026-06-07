@@ -34,7 +34,7 @@ export function BulkActionsBar() {
     };
 
     return (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-background border rounded-full px-4 py-2 shadow-lg animate-in slide-in-from-bottom-4 duration-200">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 glass-heavy rounded-full px-4 py-2 shadow-lg animate-in slide-in-from-bottom-4 duration-200">
             <span className="text-sm font-medium">
                 {t("{{count}} selected", { count: selectedIds.size })}
             </span>
@@ -55,7 +55,7 @@ export function BulkActionsBar() {
                 variant="ghost"
                 size="sm"
                 onClick={handleDeleteAll}
-                className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="gap-2 text-red-400 hover:text-red-300 hover:bg-red-500/20"
             >
                 <Trash2 className="h-4 w-4" />
                 {t("Delete")}

@@ -100,11 +100,12 @@ export function NoteForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sa
                     <div
                       key={color.name}
                       onClick={() => field.onChange(color.name)}
-                      className={`w-8 h-8 rounded-full cursor-pointer border-2 transition-all ${color.value.split(" ")[0] // Take background class
-                        } ${field.value === color.name
+                      style={{ background: color.swatch }}
+                      className={`w-8 h-8 rounded-full cursor-pointer border-2 transition-all ${
+                        field.value === color.name
                           ? "border-primary scale-110"
                           : "border-transparent hover:scale-105"
-                        }`}
+                      }`}
                       title={color.label}
                     />
                   ))}

@@ -41,7 +41,7 @@ export function CreateNoteDialog({ trigger, open: controlledOpen, onOpenChange }
   };
 
   const defaultTrigger = (
-    <Button>
+    <Button className="rounded-full px-5 aero-aqua-btn">
       <Plus className="mr-2 h-4 w-4" />
       {t("New Note")}
     </Button>

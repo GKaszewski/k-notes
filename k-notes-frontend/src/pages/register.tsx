@@ -33,6 +33,11 @@ export default function RegisterPage() {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { email: "", password: "", confirmPassword: "" },
+  });
+
   useEffect(() => {
     if (!isConfigLoading && config?.allow_registration === false) {
       toast.error(t("Registration is currently disabled"));
@@ -43,11 +48,6 @@ export default function RegisterPage() {
   if (isConfigLoading || config?.allow_registration === false) {
     return null;
   }
-
-  const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: { email: "", password: "", confirmPassword: "" },
-  });
 
   const onSubmit = (data: RegisterFormValues) => {
     register({ email: data.email, password: data.password }, {
