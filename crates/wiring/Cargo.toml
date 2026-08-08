@@ -3,6 +3,10 @@ name = "wiring"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+smart = ["dep:fastembed-adapter", "dep:qdrant-adapter"]
+
 [dependencies]
 # domain + application
 domain = { workspace = true }
@@ -13,8 +17,8 @@ sqlite = { workspace = true }
 auth = { workspace = true }
 event-publisher-memory = { workspace = true }
 nats = { workspace = true }
-fastembed-adapter = { workspace = true }
-qdrant-adapter = { workspace = true }
+fastembed-adapter = { workspace = true, optional = true }
+qdrant-adapter = { workspace = true, optional = true }
 
 # utilities
 tokio = { workspace = true }

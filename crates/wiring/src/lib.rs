@@ -12,7 +12,9 @@ use domain::{
 type OptEmbedding = Option<Arc<dyn EmbeddingGenerator>>;
 type OptVectorStore = Option<Arc<dyn VectorStore>>;
 use event_publisher_memory::MemoryEventBus;
+#[cfg(feature = "smart")]
 use fastembed_adapter::{FastEmbedConfig, FastEmbedGenerator};
+#[cfg(feature = "smart")]
 use qdrant_adapter::{QdrantConfig, QdrantVectorStore};
 use sqlite::{
     db::{connect, run_migrations},
@@ -61,34 +63,38 @@ pub async fn build_context(cfg: &WiringConfig) -> anyhow::Result<AppContext> {
             (bus.publisher(), bus.consumer())
         };
 
-    // ── Smart features ────────────────────────────────────────────────────────
-    // EmbeddingGenerator: only load the fastembed model in the worker.
-    // The backend only needs VectorStore (for querying related notes).
-    // Loading the model in both processes wastes ~150 MB per process.
-    let embedding: OptEmbedding = if cfg.enable_embeddings && cfg.qdrant_url.is_some() {
-        tracing::info!("loading fastembed embedding model");
-        let embedder = FastEmbedGenerator::new(FastEmbedConfig::default())
-            .map_err(|e| anyhow::anyhow!("fastembed init failed: {e}"))?;
-        Some(Arc::new(embedder) as Arc<dyn EmbeddingGenerator>)
-    } else {
-        None
+    // ── Smart features (behind "smart" feature flag) ────────────────────────
+    #[cfg(feature = "smart")]
+    let (embedding, vector_store): (OptEmbedding, OptVectorStore) = {
+        let emb: OptEmbedding = if cfg.enable_embeddings && cfg.qdrant_url.is_some() {
+            tracing::info!("loading fastembed embedding model");
+            let embedder = FastEmbedGenerator::new(FastEmbedConfig::default())
+                .map_err(|e| anyhow::anyhow!("fastembed init failed: {e}"))?;
+            Some(Arc::new(embedder) as Arc<dyn EmbeddingGenerator>)
+        } else {
+            None
+        };
+
+        let vs: OptVectorStore = if let Some(ref url) = cfg.qdrant_url {
+            tracing::info!("connecting to qdrant at {url}");
+            let qdrant = QdrantVectorStore::new(QdrantConfig {
+                url: url.clone(),
+                collection: cfg.qdrant_collection.clone(),
+                vector_size: cfg.qdrant_vector_size,
+            })
+            .map_err(|e| anyhow::anyhow!("qdrant client init failed: {e}"))?;
+            qdrant.init(cfg.qdrant_vector_size).await?;
+            tracing::info!(collection = %cfg.qdrant_collection, "qdrant collection ready");
+            Some(Arc::new(qdrant) as Arc<dyn VectorStore>)
+        } else {
+            None
+        };
+
+        (emb, vs)
     };
 
-    let vector_store: OptVectorStore = if let Some(ref url) = cfg.qdrant_url {
-        tracing::info!("connecting to qdrant at {url}");
-        let qdrant = QdrantVectorStore::new(QdrantConfig {
-            url: url.clone(),
-            collection: cfg.qdrant_collection.clone(),
-            vector_size: cfg.qdrant_vector_size,
-        })
-        .map_err(|e| anyhow::anyhow!("qdrant client init failed: {e}"))?;
-        qdrant.init(cfg.qdrant_vector_size).await?;
-        tracing::info!(collection = %cfg.qdrant_collection, "qdrant collection ready");
-        Some(Arc::new(qdrant) as Arc<dyn VectorStore>)
-    } else {
-        tracing::info!("no QDRANT_URL — smart features disabled");
-        None
-    };
+    #[cfg(not(feature = "smart"))]
+    let (embedding, vector_store): (OptEmbedding, OptVectorStore) = (None, None);
 
     Ok(AppContext {
         repos,

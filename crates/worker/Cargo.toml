@@ -10,7 +10,7 @@ path = "src/main.rs"
 [dependencies]
 domain = { workspace = true }
 application = { workspace = true }
-wiring = { workspace = true }
+wiring = { workspace = true, features = ["smart"] }
 async-trait = { workspace = true }
 dotenvy = "0.15"
 tokio = { workspace = true }
