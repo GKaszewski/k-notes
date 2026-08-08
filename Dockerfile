@@ -43,17 +43,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libstdc++-12-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# ORT_STRATEGY=download fetches a prebuilt ONNX Runtime binary used by
-# fastembed (smart features). Only initialised at runtime when QDRANT_URL is set.
-ENV ORT_STRATEGY=download
-
 RUN cargo fetch
 
 # Copy real source and adapter migrations.
 COPY crates/ crates/
 COPY crates/adapters/sqlite/migrations/ crates/adapters/sqlite/migrations/
 
-RUN cargo build --release -p bootstrap -p worker
+RUN cargo build --release -p bootstrap
 
 # ----- runtime -----
 FROM debian:bookworm-slim
@@ -61,31 +57,18 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
-    libgomp1 \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN mkdir -p /app/data/model-cache
 
 COPY --from=builder /build/target/release/bootstrap ./bootstrap
-COPY --from=builder /build/target/release/worker    ./worker
-
-# Copy ONNX Runtime shared library (required when smart features are enabled).
-RUN find /build 2>/dev/null || true
-COPY --from=builder /build/target/release/build/ /tmp/build/
-RUN find /tmp/build -name "libonnxruntime*" -exec cp {} /app/ \; 2>/dev/null || true \
- && rm -rf /tmp/build
 
 # Frontend dist — served at / by bootstrap when SPA_DIR is set.
 COPY --from=spa-builder /spa/dist ./frontend/dist
 
 EXPOSE 3000
 
-ENV RUST_LOG=bootstrap=info,tower_http=info,worker=info
-ENV LD_LIBRARY_PATH=/app
+ENV RUST_LOG=bootstrap=info,tower_http=info
 ENV SPA_DIR=/app/frontend/dist
-# FastEmbed downloads the embedding model here on first use.
-# Mount a persistent volume to avoid re-downloading across container restarts.
-ENV FASTEMBED_CACHE_DIR=/app/data/model-cache
 
 CMD ["./bootstrap"]
