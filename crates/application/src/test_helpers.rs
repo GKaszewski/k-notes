@@ -253,6 +253,54 @@ impl LinkRepository for MemoryLinkRepo {
     }
 }
 
+// ── RefreshSession ──────────────────────────────────────────────────────────
+
+#[derive(Default)]
+pub struct MemoryRefreshSessionRepo {
+    sessions: Mutex<Vec<domain::auth::RefreshSession>>,
+}
+
+#[async_trait]
+impl domain::auth::ports::RefreshSessionRepository for MemoryRefreshSessionRepo {
+    async fn create(&self, session: &domain::auth::RefreshSession) -> DomainResult<()> {
+        self.sessions.lock().unwrap().push(session.clone());
+        Ok(())
+    }
+
+    async fn find_by_token(
+        &self,
+        token: &str,
+    ) -> DomainResult<Option<domain::auth::RefreshSession>> {
+        Ok(self
+            .sessions
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|s| s.token() == token)
+            .cloned())
+    }
+
+    async fn revoke(&self, token: &str) -> DomainResult<()> {
+        self.sessions.lock().unwrap().retain(|s| s.token() != token);
+        Ok(())
+    }
+
+    async fn revoke_all_for_user(&self, user_id: &UserId) -> DomainResult<()> {
+        self.sessions
+            .lock()
+            .unwrap()
+            .retain(|s| s.user_id() != *user_id);
+        Ok(())
+    }
+
+    async fn delete_expired(&self) -> DomainResult<u64> {
+        let before = self.sessions.lock().unwrap().len();
+        self.sessions.lock().unwrap().retain(|s| !s.is_expired());
+        let after = self.sessions.lock().unwrap().len();
+        Ok((before - after) as u64)
+    }
+}
+
 // ── PasswordHasher ───────────────────────────────────────────────────────────
 
 pub struct PlaintextHasher;
@@ -310,6 +358,7 @@ impl TestContext {
                 tag: Arc::new(MemoryTagRepo::default()),
                 user: Arc::new(MemoryUserRepo::default()),
                 link: Arc::new(MemoryLinkRepo::default()),
+                refresh_session: Arc::new(MemoryRefreshSessionRepo::default()),
             },
             services: Services {
                 password_hasher: Arc::new(PlaintextHasher),
@@ -322,6 +371,7 @@ impl TestContext {
                 base_url: "http://localhost:3000".into(),
                 smart: SmartConfig::default(),
                 allow_registration: true,
+                refresh_token_ttl_seconds: 2_592_000,
             },
         };
 

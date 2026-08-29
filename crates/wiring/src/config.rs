@@ -56,6 +56,10 @@ pub struct WiringConfig {
     /// `VectorStore` (for querying related notes), not `EmbeddingGenerator`.
     /// Default: `false`.
     pub enable_embeddings: bool,
+
+    /// `REFRESH_TOKEN_TTL_SECONDS` — refresh token time-to-live in seconds.
+    /// Default: `2592000` (30 days).
+    pub refresh_token_ttl_seconds: i64,
 }
 
 impl WiringConfig {
@@ -79,6 +83,7 @@ impl WiringConfig {
             enable_embeddings: optional_env("ENABLE_EMBEDDINGS")
                 .map(|s| s == "true" || s == "1")
                 .unwrap_or(false),
+            refresh_token_ttl_seconds: parse_env("REFRESH_TOKEN_TTL_SECONDS", 2_592_000i64)?,
         })
     }
 
@@ -90,6 +95,7 @@ impl WiringConfig {
                 min_similarity: self.smart_min_similarity,
             },
             allow_registration: self.allow_registration,
+            refresh_token_ttl_seconds: self.refresh_token_ttl_seconds,
         }
     }
 

@@ -8,6 +8,8 @@ pub enum DomainError {
     Conflict(String),
     #[error("forbidden: {0}")]
     Forbidden(String),
+    #[error("unauthorized: {0}")]
+    Unauthorized(String),
     #[error("validation: {0}")]
     Validation(String),
     #[error("repository: {0}")]

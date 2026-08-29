@@ -6,19 +6,36 @@ declare global {
     }
 }
 
-const TOKEN_STORAGE_KEY = 'k_notes_auth_token';
+const ACCESS_TOKEN_KEY = 'k_notes_auth_token';
+const REFRESH_TOKEN_KEY = 'k_notes_refresh_token';
 
-// JWT Token management
 export function setAuthToken(token: string): void {
-    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
 }
 
 export function getAuthToken(): string | null {
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 export function clearAuthToken(): void {
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+export function getRefreshToken(): string | null {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function clearRefreshToken(): void {
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+export function clearAllTokens(): void {
+    clearAuthToken();
+    clearRefreshToken();
 }
 
 const getApiUrl = () => {
@@ -53,6 +70,31 @@ export class ApiError extends Error {
     }
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+
+    try {
+        const url = `${getApiUrl()}/auth/refresh`;
+        const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (!response.ok) return false;
+
+        const data = await response.json();
+        setAuthToken(data.access_token);
+        setRefreshToken(data.refresh_token);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     const url = `${getApiUrl()}${endpoint}`;
     const token = getAuthToken();
@@ -80,6 +122,47 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
         );
 
         const response = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
+
+        if (response.status === 401) {
+            if (!refreshPromise) {
+                refreshPromise = tryRefreshToken().finally(() => {
+                    refreshPromise = null;
+                });
+            }
+
+            const refreshed = await refreshPromise;
+            if (refreshed) {
+                // Retry with the new token
+                const newToken = getAuthToken();
+                if (newToken) {
+                    headers["Authorization"] = `Bearer ${newToken}`;
+                }
+                const retryResponse = await fetch(url, { ...options, headers, credentials: "include" });
+
+                if (!retryResponse.ok) {
+                    let errorMessage = "An error occurred";
+                    try {
+                        const errorData = await retryResponse.json();
+                        errorMessage = errorData.error?.message || errorData.message || errorMessage;
+                    } catch {
+                        // failed to parse json
+                    }
+                    throw new ApiError(retryResponse.status, errorMessage);
+                }
+
+                if (retryResponse.status === 204) return null;
+                try {
+                    return await retryResponse.json();
+                } catch {
+                    return null;
+                }
+            }
+
+            // Refresh failed — clear tokens and redirect
+            clearAllTokens();
+            window.location.href = "/login";
+            throw new ApiError(401, "Session expired");
+        }
 
         if (!response.ok) {
             // Try to parse error message
@@ -141,4 +224,3 @@ export const api = {
     },
     importData: (data: any) => api.post("/import", data),
 };
-

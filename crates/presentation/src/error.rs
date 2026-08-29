@@ -30,6 +30,7 @@ impl From<DomainError> for ApiError {
         match e {
             DomainError::NotFound(msg) => Self::NotFound(msg),
             DomainError::Forbidden(msg) => Self::Forbidden(msg),
+            DomainError::Unauthorized(_) => Self::Unauthorized,
             DomainError::Conflict(msg) => Self::Conflict(msg),
             DomainError::Validation(msg) => Self::Validation(msg),
             DomainError::Repository(msg) => {

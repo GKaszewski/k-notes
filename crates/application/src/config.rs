@@ -5,6 +5,8 @@ pub struct AppConfig {
     pub smart: SmartConfig,
     /// When false the `/auth/register` endpoint returns 403.
     pub allow_registration: bool,
+    /// Refresh token time-to-live in seconds. Default: 30 days.
+    pub refresh_token_ttl_seconds: i64,
 }
 
 #[derive(Debug, Clone)]
@@ -28,6 +30,7 @@ impl AppConfig {
             base_url: std::env::var("BASE_URL").unwrap_or_else(|_| "http://localhost:3000".into()),
             smart: SmartConfig::default(),
             allow_registration: true,
+            refresh_token_ttl_seconds: 30 * 24 * 3600,
         }
     }
 }

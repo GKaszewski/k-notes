@@ -14,6 +14,16 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct RefreshRequest {
+    pub refresh_token: String,
+}
+
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct LogoutRequest {
+    pub refresh_token: String,
+}
+
 #[derive(Debug, Serialize, utoipa::ToSchema)]
 pub struct UserResponse {
     pub id: Uuid,
@@ -26,4 +36,5 @@ pub struct UserResponse {
 pub struct AuthResponse {
     pub user: UserResponse,
     pub access_token: String,
+    pub refresh_token: String,
 }

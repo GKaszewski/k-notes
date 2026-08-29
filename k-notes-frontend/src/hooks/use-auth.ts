@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, setAuthToken, clearAuthToken } from "@/lib/api";
+import { api, setAuthToken, setRefreshToken, clearAllTokens, getRefreshToken } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 
 export interface User {
@@ -11,6 +11,7 @@ export interface User {
 export interface AuthResponse {
     user: User;
     access_token: string;
+    refresh_token: string;
 }
 
 async function fetchUser(): Promise<User | null> {
@@ -40,6 +41,7 @@ export function useLogin() {
             api.post("/auth/login", credentials),
         onSuccess: (result: AuthResponse) => {
             setAuthToken(result.access_token);
+            setRefreshToken(result.refresh_token);
             queryClient.invalidateQueries({ queryKey: ["user"] });
             navigate("/");
         },
@@ -55,6 +57,7 @@ export function useRegister() {
             api.post("/auth/register", credentials),
         onSuccess: (result: AuthResponse) => {
             setAuthToken(result.access_token);
+            setRefreshToken(result.refresh_token);
             queryClient.invalidateQueries({ queryKey: ["user"] });
             navigate("/");
         },
@@ -66,10 +69,14 @@ export function useLogout() {
     const navigate = useNavigate();
 
     return useMutation({
-        // JWT logout is client-side: discard the token.
-        mutationFn: () => Promise.resolve(),
-        onSuccess: () => {
-            clearAuthToken();
+        mutationFn: async () => {
+            const refreshToken = getRefreshToken();
+            if (refreshToken) {
+                await api.post("/auth/logout", { refresh_token: refreshToken }).catch(() => {});
+            }
+        },
+        onSettled: () => {
+            clearAllTokens();
             queryClient.setQueryData(["user"], null);
             navigate("/login");
         },

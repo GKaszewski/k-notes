@@ -20,6 +20,7 @@ use sqlite::{
     db::{connect, run_migrations},
     link::SqliteLinkRepository,
     note::SqliteNoteRepository,
+    refresh_session::SqliteRefreshSessionRepository,
     tag::SqliteTagRepository,
     user::SqliteUserRepository,
 };
@@ -43,6 +44,7 @@ pub async fn build_context(cfg: &WiringConfig) -> anyhow::Result<AppContext> {
         tag: Arc::new(SqliteTagRepository::new(pool.clone())),
         user: Arc::new(SqliteUserRepository::new(pool.clone())),
         link: Arc::new(SqliteLinkRepository::new(pool.clone())),
+        refresh_session: Arc::new(SqliteRefreshSessionRepository::new(pool.clone())),
     };
 
     // ── Auth ──────────────────────────────────────────────────────────────────

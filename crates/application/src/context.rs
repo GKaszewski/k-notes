@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use domain::{
+    auth::ports::RefreshSessionRepository,
     events::{EventConsumer, EventPublisher},
     note::ports::{LinkRepository, NoteRepository},
     smart::ports::{EmbeddingGenerator, VectorStore},
@@ -16,6 +17,7 @@ pub struct Repositories {
     pub tag: Arc<dyn TagRepository>,
     pub user: Arc<dyn UserRepository>,
     pub link: Arc<dyn LinkRepository>,
+    pub refresh_session: Arc<dyn RefreshSessionRepository>,
 }
 
 #[derive(Clone)]
